@@ -1,16 +1,19 @@
+
+from rest_framework.authtoken.models import Token
 from django.contrib import admin
 from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.models import Group
 from unfold.admin import ModelAdmin
 from unfold.forms import AdminPasswordChangeForm, UserCreationForm, UserChangeForm
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import Apartment, CustomUser, Visitor, Reservation, Communication, Finance, Vehicle, Orders
+from .models import Apartment, CustomUser, Visitor, Reservation, Communication, Finance, Vehicle, Orders, Visit
 from .forms import VisitorForm, CommunicationForm, ReservationForm, FinanceForm, VehicleForm, ApartmentForm, OrdersForm
 
 admin.site.unregister(Group)
 
 # Cadastro do modelo 'Apartamento' no site de administração, para que os síndicos e administradores possam gerenciar
 # os Apartamentos.
+
 @admin.register(Apartment)
 class ApartmentAdmin(ModelAdmin):
     model = Apartment
@@ -54,7 +57,7 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
 # os Visitantes.
 @admin.register(Visitor)
 class VisitorAdmin(ModelAdmin):
-    list_display = ('name', 'document', 'registered_by', 'entry_date')
+    list_display = ('name', 'document', 'registered_by')
     search_fields = ('name', 'document', 'registered_by__name')
     form = VisitorForm
 
@@ -67,8 +70,8 @@ class VisitorAdmin(ModelAdmin):
 # as reservas.
 @admin.register(Reservation)
 class ReservationAdmin(ModelAdmin):
-    list_display = ('id','resident', 'space', 'date', 'time', 'end_time')
-    search_fields = ('resident__name', 'space', 'date')
+    list_display = ('id','resident', 'space', 'start_time', 'end_time')
+    search_fields = ('resident__name', 'space',)
     ordering = ('id',)
     form = ReservationForm
 
@@ -132,3 +135,11 @@ class OrdersAdmin(ModelAdmin):
         if not obj.pk:
             obj.registered_by = request.user
         super().save_model(request, obj, form, change)
+
+
+
+@admin.register(Visit)
+class VisitAdmin(ModelAdmin):
+    list_display = ('visitor', 'apartment', 'entry_date', 'exit_date')
+    search_fields = ('visitor__name', 'apartment__number',)
+    ordering = ('-apartment',)

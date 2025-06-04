@@ -1,12 +1,13 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import AbstractUser, BaseUserManager, Group
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 # CustomUserManager para gerenciar a criação de usuários e superusuários
 class CustomUserManager(BaseUserManager):
-    def create_user(self, email, password, user_type = 'morador', **extra_fields):
+    def create_user(self, email, password = None, user_type = 'morador', **extra_fields):
         """
-        Cria e salva um usuário do tipo morador por padrão com o e-mail e senha fornecidos.
+        Cria e salva um usuário por padrão com o e-mail e senha fornecidos.
         """
         if not email:
             raise ValueError('O email é obrigatório')
@@ -17,7 +18,7 @@ class CustomUserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, password, **extra_fields):
+    def create_superuser(self, email, password = None, **extra_fields):
         """
         Cria e salva um superusuário com o e-mail e senha fornecidos.
         """
@@ -35,9 +36,9 @@ class CustomUserManager(BaseUserManager):
 # Criando um modelo personalizado que abranja Sindico, Morador e Administração
 class CustomUser(AbstractUser):
     # Definindo os campos do modelo
-    username = models.CharField(max_length=150, unique=True, blank=True, null=False)
+    email = models.EmailField(unique=True)
     name = models.CharField(verbose_name='Nome Completo', max_length=255)
-    document = models.CharField(max_length=20, unique=True, verbose_name='Documento de Identificação')
+    document = models.CharField(max_length=20, unique=True, blank=True, null=True, verbose_name='Documento de Identificação')
     telephone = models.CharField(max_length=11, blank=True, null=True, verbose_name='Telefone')
 
     # Definindo os tipos de usuários disponíveis
@@ -56,17 +57,15 @@ class CustomUser(AbstractUser):
         default='morador',
     )
 
-
     objects = CustomUserManager()
 
     first_name = None
     last_name = None
 
-    email = models.EmailField(verbose_name='E-mail', max_length=255, unique=True)
     entry_date = models.DateField(auto_now_add=True)
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['name', 'document', 'user_type', 'telephone'] # Campos obrigatórios
+    REQUIRED_FIELDS = ['name', 'user_type'] # Campos obrigatórios
 
     class Meta:
         verbose_name = 'Usuário'
@@ -87,6 +86,27 @@ class CustomUser(AbstractUser):
 
         super().save(*args, **kwargs)
 
+# Definindo o modelo de Visitante
+class Visitor(models.Model):
+    # Definindo os campos do modelo
+    name = models.CharField(max_length=255, verbose_name='Nome do Visitante')
+    document = models.CharField(max_length=20, unique=True, verbose_name='Documento do Visitante')
+    telephone = models.CharField(max_length=11, blank=True, null=True, verbose_name='Telefone do Visitante')
+    registered_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='registered_visitors',
+        verbose_name='Cadastrado por',
+    )
+
+    class Meta:
+        verbose_name = 'Visitante'
+        verbose_name_plural = 'Visitantes'
+
+    def __str__(self):
+        return f'Visitante {self.name} - Cadastrado por {self.registered_by}'
+
+
 # Definindo o modelo de Apartamento
 class Apartment(models.Model):
     # Definindo os campos do modelo
@@ -96,9 +116,11 @@ class Apartment(models.Model):
         related_name='registered_apartments',
         verbose_name='Cadastrado por'
     )
+
     number = models.CharField(max_length=10, unique=True, verbose_name='Número do Apartamento')
     block = models.CharField(max_length=10, verbose_name='Bloco')
     tread = models.IntegerField(verbose_name='Piso')
+
     residents = models.ManyToManyField(
         CustomUser,
         related_name='apartments',
@@ -106,7 +128,14 @@ class Apartment(models.Model):
         blank=True,
         help_text='Selecione os moradores que residem neste apartamento.'
     )
-    entry_date = models.DateField(auto_now_add=True)
+    visitors = models.ManyToManyField(
+        Visitor,
+        through='Visit',
+        through_fields=('apartment', 'visitor'),
+        related_name='visited_apartments',
+    )
+
+    entry_date = models.DateField(auto_now=True)
     exit_date = models.DateField(null=True, blank=True, verbose_name='Data de Saída')
     occupation = models.BooleanField(default=False, verbose_name='Ocupação')
 
@@ -117,33 +146,54 @@ class Apartment(models.Model):
     def __str__(self):
         return f'Apartamento {self.number} - Bloco {self.block} - Piso {self.tread} - Ocupação: {self.occupation}'
 
-# Definindo o modelo de Visitante
-class Visitor(models.Model):
+    def clean(self):
+        if self.exit_date and self.exit_date <= self.entry_date:
+            raise ValidationError('A data de saída deve ser posterior à data de entrada.')
+
+        if self.entry_date and self.entry_date < timezone.now().date() and self.pk is None:
+            raise ValidationError('Não é possível registrar um apartamento para uma data no passado.')
+
+        if not self.number or not self.block or not self.tread:
+            raise ValidationError('Todos os campos do apartamento são obrigatórios.')
+
+        if Apartment.objects.filter(number=self.number, block=self.block, tread=self.tread).exclude(pk=self.pk).exists():
+            raise ValidationError('Já existe um apartamento com este número, bloco e piso.')
+
+# Definindo o modelo de Visita
+class Visit(models.Model):
     # Definindo os campos do modelo
-    name = models.CharField(max_length=255, verbose_name='Nome do Visitante')
-    document = models.CharField(max_length=20, unique=True, verbose_name='Documento do Visitante')
-    telephone = models.CharField(max_length=11, blank=True, null=True, verbose_name='Telefone do Visitante')
-    observation = models.TextField(blank=True, null=True, verbose_name='Observação')
-    registered_by = models.ForeignKey(
-        CustomUser,
+    visitor = models.ForeignKey(
+        Visitor,
         on_delete=models.CASCADE,
-        related_name='registered_visitors',
-        verbose_name='Cadastrado por'
+        related_name='visitor',
     )
-    visiting = models.ManyToManyField(
-        CustomUser,
-        related_name='visitors',
-        verbose_name='Anfitriões',
+
+    apartment = models.ForeignKey(
+        Apartment,
+        on_delete=models.CASCADE,
+        related_name='apartment',
     )
-    entry_date = models.DateField(auto_now_add=True, verbose_name='Data da Visita')
-    exit_date = models.DateField(blank=True, null=True, verbose_name='Data de Saída')
+
+    observation = models.TextField(blank=True, null=True, verbose_name='Observação')
+    entry_date = models.DateTimeField(auto_now_add=True, verbose_name='Data da Visita')
+    exit_date = models.DateTimeField(blank=True, null=True, verbose_name='Data de Saída')
 
     class Meta:
-        verbose_name = 'Visitante'
-        verbose_name_plural = 'Visitantes'
+        verbose_name = 'Visita'
+        verbose_name_plural = 'Visitas'
+        unique_together = ('visitor', 'apartment')
+        ordering = ['entry_date']
 
     def __str__(self):
-        return f'Visitante {self.name} - Cadastrado por {self.registered_by}'
+        return (f'Visita de {self.visitor.name} ao Apartamento {self.apartment.number} '
+                f'- Entrada: {self.entry_date} - Saída: {self.exit_date}')
+
+    def clean(self):
+        if self.exit_date and self.exit_date and self.exit_date <= self.entry_date:
+            raise ValidationError('A data de saída deve ser posterior à data de entrada.')
+
+        if self.entry_date and self.entry_date < timezone.now() and self.pk is None:
+            raise ValidationError('Não é possível registrar uma visita para uma data no passado.')
 
 # Definindo o modelo de Reserva
 class Reservation(models.Model):
@@ -163,23 +213,41 @@ class Reservation(models.Model):
         related_name='reservations',
         verbose_name='Morador',
     )
+
     space = models.CharField(max_length=50, choices=spaces, verbose_name='Espaço')
-    date = models.DateField(auto_now_add=True, verbose_name='Data')
-    time = models.TimeField(verbose_name='Hora de Início')
-    end_time = models.TimeField(verbose_name='Hora de Fim', blank=True, null=True)
+    start_time = models.DateTimeField(verbose_name='Data e Hora Início')
+    end_time = models.DateTimeField(verbose_name='Data e Hora de Fim', blank=True, null=True)
 
     # Validando os dados antes de salvar
-    def save(self, *args, **kwargs):
+    def clean(self, *args, **kwargs):
+        super().clean()
+
         if not self.end_time:
             raise ValueError('Hora de fim é obrigatória.')
-        super().save(*args, **kwargs)
+
+        if self.start_time and self.end_time:
+            if self.end_time <= self.start_time:
+                raise ValueError('A hora de fim deve ser posterior à hora de início.')
+
+            if self.start_time and self.start_time < timezone.now() and self.pk is None:
+                raise ValueError('Não é possível reservar um espaço para uma hora no passado.')
+
+        conflicting_reservations = Reservation.objects.filter(
+            space=self.space,
+            time__lt=self.end_time,
+            end_time__gt=self.start_time
+        ).exclude(pk=self.pk)
+
+        if conflicting_reservations.exists():
+            raise ValueError('Já existe uma reserva para este espaço nesse horário.')
+
 
     class Meta:
         verbose_name = 'Reserva'
         verbose_name_plural = 'Reservas'
 
     def __str__(self):
-        return f'Reserva - {self.space} - {self.resident.name} - {self.date} {self.time}'
+        return f'Reserva - {self.space} - {self.resident.name} - {self.start_time} {self.end_time}'
 
 
 # Definindo o modelo de Comunicação
@@ -208,13 +276,12 @@ class Communication(models.Model):
     def __str__(self):
         return f'Assunto: {self.subject} - {self.sent_at}'
 
-    # Validando o envio de mensagens e salvando
-    def save(self, *args, **kwargs):
+    # Validando os dados antes de salvar
+    def clean(self):
         if not self.subject:
             raise ValidationError('O assunto é obrigatório.')
         if not self.message:
             raise ValidationError('A mensagem é obrigatória.')
-        super().save(*args, **kwargs)
 
 class Finance(models.Model):
     # Definindo os campos do modelo
@@ -224,6 +291,7 @@ class Finance(models.Model):
         related_name='finance',
         verbose_name='Criador'
     )
+
     value = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -245,6 +313,13 @@ class Finance(models.Model):
 
     def __str__(self):
         return f'Financeiro - {self.creator.name} - {self.date} - {self.value}'
+
+    def clean(self):
+        if self.value <= 0:
+            raise ValidationError('O valor deve ser maior que zero.')
+
+        if not self.description:
+            raise ValidationError('A descrição é obrigatória.')
 
 
 class Vehicle(models.Model):
@@ -301,12 +376,18 @@ class Orders(models.Model):
         CustomUser,
         on_delete=models.CASCADE,
         related_name='orders',
-        verbose_name='Morador'
+        verbose_name='Proprietário do Pedido'
     )
 
     class Meta:
         verbose_name = 'Encomenda'
         verbose_name_plural = 'Encomendas'
+        unique_together = ('order_code', 'owner')
 
     def __str__(self):
         return f'Encomenda {self.order_code} - {self.status} - {self.owner}'
+
+    def clean(self):
+        if not self.order_code:
+            raise ValidationError('O código do pedido é obrigatório.')
+

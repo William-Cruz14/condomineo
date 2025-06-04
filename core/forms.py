@@ -16,7 +16,7 @@ class CommunicationForm(forms.ModelForm):
 class ReservationForm(forms.ModelForm):
     class Meta:
         model = Reservation
-        fields = ['space', 'time', 'end_time']
+        fields = ['space', 'start_time', 'end_time']
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
@@ -26,7 +26,7 @@ class ReservationForm(forms.ModelForm):
 class ApartmentForm(forms.ModelForm):
     class Meta:
         model = Apartment
-        fields = ['number', 'block', 'tread','residents', 'occupation','exit_date']
+        fields = ['number', 'block', 'tread', 'residents', 'occupation', 'exit_date']
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
@@ -36,7 +36,7 @@ class ApartmentForm(forms.ModelForm):
 class VisitorForm(forms.ModelForm):
     class Meta:
         model = Visitor
-        fields = ['name', 'document', 'telephone', 'visiting','observation']
+        fields = ['name', 'document', 'telephone',]
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)

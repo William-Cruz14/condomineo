@@ -6,7 +6,7 @@ from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from django.db.models import Q
 
-from .models import CustomUser, Visitor, Reservation, Communication, Apartment, Vehicle, Finance, Orders
+from .models import CustomUser, Visitor, Reservation, Communication, Apartment, Vehicle, Finance, Orders, Visit
 from .serializers import (
     CustomUserSerializer, CustomUserCreateSerializer, VisitorSerializer,
     ReservationSerializer, CommunicationSerializer, ApartmentSerializer, VehicleSerializer, FinanceSerializer,
@@ -133,7 +133,20 @@ class ApartmentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(registered_by=self.request.user)
 
+class VisitViewSet(viewsets.ModelViewSet):
+    permission_classes = [DjangoModelPermissions,]
+    serializer_class = VisitorSerializer
 
+    # Sobrescreve o método get_queryset para filtrar as visitas de acordo com o usuário logado
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return Visit.objects.all()
+        return Visit.objects.filter(resident=user)
+
+    # Sobrescreve o método perform_create para salvar o usuário logado como o criador da visita.
+    def perform_create(self, serializer):
+        serializer.save(resident=self.request.user)
 class VehicleViewSet(viewsets.ModelViewSet):
     permission_classes = [DjangoModelPermissions,]
     serializer_class = VehicleSerializer

@@ -15,7 +15,7 @@ router.register(r'communications', CommunicationViewSet, basename='communication
 router.register(r'apartments', ApartmentViewSet, basename='apartment')
 router.register(r'finances', FinanceViewSet, basename='finance')
 router.register(r'vehicles', VehicleViewSet, basename='vehicle')
-router.register(r'orderss', OrdersViewSet, basename='orders')
+router.register(r'orders', OrdersViewSet, basename='orders')
 
 schema_view = get_schema_view(
     openapi.Info(

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser, Visitor, Reservation, Communication, Apartment, Finance, Vehicle, Orders
+from .models import CustomUser, Visitor, Reservation, Communication, Apartment, Finance, Vehicle, Orders, Visit
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -22,20 +22,14 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
         return user
 
 class VisitorSerializer(serializers.ModelSerializer):
-
-    # O campo 'visiting_ids' é um campo de chave estrangeira que permite selecionar vários usuários
-    visiting_ids = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(),
-        many=True,
-        write_only=True,
-        source='hosts'
-    )
     # O campo 'registered_by' é somente leitura, pois é preenchido automaticamente com o usuário autenticado
     registered_by = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Visitor
-        fields = ('id', 'name', 'document', 'registered_by', 'visiting_ids','entry_date')
+        fields = ('id', 'name', 'document', 'registered_by',)
+
+
 
 
 class ReservationSerializer(serializers.ModelSerializer):
@@ -45,7 +39,7 @@ class ReservationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Reservation
-        fields = ('id', 'resident', 'space', 'date', 'time', 'end_time')
+        fields = ('id', 'resident', 'space', 'start_time', 'end_time')
 
 class CommunicationSerializer(serializers.ModelSerializer):
 
@@ -75,12 +69,27 @@ class ApartmentSerializer(serializers.ModelSerializer):
         many=True,
         required=False,
     )
+
+
+    # O campo 'registered_by' é somente leitura, pois é preenchido automaticamente com o usuário autenticado
+    registered_by = serializers.PrimaryKeyRelatedField(read_only=True)
+    visitors = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = Apartment
+        fields = ('id', 'number', 'block', 'tread','residents', 'visitors', 'entry_date', 'occupation', 'registered_by')
+
+class VisitSerializer(serializers.ModelSerializer):
+    # O campo 'visitor' é um campo de chave estrangeira que permite selecionar um visitante
+    visitor = CustomUserSerializer()
+    # O campo 'apartment' é um campo de chave estrangeira que permite selecionar um apartamento
+    apartment = ApartmentSerializer()
     # O campo 'registered_by' é somente leitura, pois é preenchido automaticamente com o usuário autenticado
     registered_by = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
-        model = Apartment
-        fields = ('id', 'number', 'block', 'tread','residents', 'entry_date', 'occupation', 'registered_by')
+        model = Visit
+        fields = ('id', 'visitor', 'apartment', 'entry_date', 'observation','exit_date', 'registered_by')
 
 
 class VehicleSerializer(serializers.ModelSerializer):
