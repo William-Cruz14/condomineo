@@ -18,5 +18,6 @@ COPY . /app/
 EXPOSE 8000
 
 # Command to start the server
-
+# INCORRETO: CMD ["sh","-c", "-", "0.0.0.0:8000", "condomineo.wsgi"]
+# CORREÇÃO ABAIXO (exemplo com Gunicorn):
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "condomineo.wsgi"]
