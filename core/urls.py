@@ -5,7 +5,7 @@ from rest_framework.permissions import DjangoModelPermissions
 from rest_framework.routers import DefaultRouter
 from .views import (CustomAuthToken, UserViewSet, VisitorViewSet,
                     ReservationViewSet, CommunicationViewSet, ApartmentViewSet, FinanceViewSet, VehicleViewSet,
-                    OrdersViewSet)
+                    OrdersViewSet, PersonViewSet)
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
@@ -15,6 +15,7 @@ router.register(r'communications', CommunicationViewSet, basename='communication
 router.register(r'apartments', ApartmentViewSet, basename='apartment')
 router.register(r'finances', FinanceViewSet, basename='finance')
 router.register(r'vehicles', VehicleViewSet, basename='vehicle')
+router.register(r'persons', PersonViewSet, basename='person')
 router.register(r'orders', OrdersViewSet, basename='orders')
 
 schema_view = get_schema_view(

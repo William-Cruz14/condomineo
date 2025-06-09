@@ -1,25 +1,20 @@
 from rest_framework import serializers
-from .models import CustomUser, Visitor, Reservation, Communication, Apartment, Finance, Vehicle, Orders, Visit
+from .models import Person, Visitor, Reservation, Communication, Apartment, Finance, Vehicle, Orders, Visit
+from users.models import Profile
 
-
-class CustomUserSerializer(serializers.ModelSerializer):
+# Serializer para Profile (autenticação)
+class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
-        model = CustomUser
-        fields = ('id', 'email', 'name', 'document', 'telephone', 'user_type', )
+        model = Profile
+        fields = ('id', 'email', 'first_name', 'last_name')
 
-class CustomUserCreateSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+# Serializer para Person (domínio)
+class PersonSerializer(serializers.ModelSerializer):
+    profile = ProfileSerializer(read_only=True)
 
     class Meta:
-        model = CustomUser
-        fields = ('id', 'email', 'name', 'document', 'telephone', 'user_type', 'password')
-
-    def create(self, validated_data):
-        password = validated_data.pop('password')
-        user = CustomUser(**validated_data)
-        user.set_password(password)
-        user.save()
-        return user
+        model = Person
+        fields = ('id', 'name', 'document', 'telephone', 'user_type', 'profile')
 
 class VisitorSerializer(serializers.ModelSerializer):
     # O campo 'registered_by' é somente leitura, pois é preenchido automaticamente com o usuário autenticado
@@ -28,8 +23,6 @@ class VisitorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Visitor
         fields = ('id', 'name', 'document', 'registered_by',)
-
-
 
 
 class ReservationSerializer(serializers.ModelSerializer):
@@ -45,7 +38,7 @@ class CommunicationSerializer(serializers.ModelSerializer):
 
     # O campo 'recipients' é um campo de chave estrangeira que permite selecionar vários usuários
     recipients = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(),
+        queryset=Person.objects.all(),
         many=True,
     )
     # O campo 'sender' é somente leitura, pois é preenchido automaticamente com o usuário autenticado
@@ -65,7 +58,7 @@ class FinanceSerializer(serializers.ModelSerializer):
 class ApartmentSerializer(serializers.ModelSerializer):
     # O campo 'residents' é um campo de chave estrangeira que permite selecionar vários usuários
     residents = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(),
+        queryset=Person.objects.all(),
         many=True,
         required=False,
     )
@@ -81,7 +74,7 @@ class ApartmentSerializer(serializers.ModelSerializer):
 
 class VisitSerializer(serializers.ModelSerializer):
     # O campo 'visitor' é um campo de chave estrangeira que permite selecionar um visitante
-    visitor = CustomUserSerializer()
+    visitor = PersonSerializer()
     # O campo 'apartment' é um campo de chave estrangeira que permite selecionar um apartamento
     apartment = ApartmentSerializer()
     # O campo 'registered_by' é somente leitura, pois é preenchido automaticamente com o usuário autenticado

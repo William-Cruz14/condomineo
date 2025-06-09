@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import dj_database_url
 from decouple import config
-from django.templatetags.static import static
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'users.apps.UsersConfig',
     'core.apps.CoreConfig',
     'drf_yasg',
     'stdimage',
@@ -49,8 +50,8 @@ INSTALLED_APPS = [
 
 UNFOLD = {
     "SITE_LOGO": {
-            "light": lambda request: static("logo.png"),  # light mode
-            "dark": lambda request: static("logo.png"),  # dark mode
+            "light": lambda request: "/static/logo.png",  # light mode
+            "dark": lambda request: "/static/logo.png",  # dark mode
         },
     'APP_NAME': 'CondoMineo',
     'APP_DESCRIPTION': 'CondoMineo é um aplicativo para gestão de condomínios, facilitando a comunicação entre moradores e administração.',
@@ -179,7 +180,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-AUTH_USER_MODEL = 'core.CustomUser'
+AUTH_USER_MODEL = 'users.Profile'
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/

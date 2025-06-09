@@ -2,44 +2,16 @@ from django.db import models, transaction
 from django.contrib.auth.models import AbstractUser, BaseUserManager, Group
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
+from users.models import Profile
 
-# CustomUserManager para gerenciar a criação de usuários e superusuários
-class CustomUserManager(BaseUserManager):
-    def create_user(self, email, password = None, user_type = 'morador', **extra_fields):
-        """
-        Cria e salva um usuário por padrão com o e-mail e senha fornecidos.
-        """
-        if not email:
-            raise ValueError('O email é obrigatório')
-
-        email = self.normalize_email(email)
-        user = self.model(email=email, user_type = user_type, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
-
-    def create_superuser(self, email, password = None, **extra_fields):
-        """
-        Cria e salva um superusuário com o e-mail e senha fornecidos.
-        """
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('user_type', 'admin')
-
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superusuário deve ter is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superusuário deve ter is_superuser=True.')
-
-        return self.create_user(email, password, **extra_fields)
 
 # Criando um modelo personalizado que abranja Sindico, Morador e Administração
-class CustomUser(AbstractUser):
+class Person(models.Model):
     # Definindo os campos do modelo
-    email = models.EmailField(unique=True)
     name = models.CharField(verbose_name='Nome Completo', max_length=255)
     document = models.CharField(max_length=20, unique=True, blank=True, null=True, verbose_name='Documento de Identificação')
     telephone = models.CharField(max_length=11, blank=True, null=True, verbose_name='Telefone')
+    profile = models.OneToOneField(Profile, on_delete=models.CASCADE, related_name='person')
 
     # Definindo os tipos de usuários disponíveis
     USER_TYPE_CHOICES = [
@@ -57,34 +29,14 @@ class CustomUser(AbstractUser):
         default='morador',
     )
 
-    objects = CustomUserManager()
-
-    first_name = None
-    last_name = None
-
-    entry_date = models.DateField(auto_now_add=True)
-
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['name', 'user_type'] # Campos obrigatórios
-
     class Meta:
-        verbose_name = 'Usuário'
-        verbose_name_plural = 'Usuários'
+        verbose_name = 'Pessoa'
+        verbose_name_plural = 'Pessoas'
+        ordering = ['name']
 
     def __str__(self):
         return f'{self.name}'
 
-    # Validando alguns dados antes de salvar
-    def save(self, *args, **kwargs):
-
-        if not self.username:
-            self.username = self.email
-
-        if self.user_type in ['sindico', 'admin']:
-            self.is_staff = True
-            self.is_superuser = True
-
-        super().save(*args, **kwargs)
 
 # Definindo o modelo de Visitante
 class Visitor(models.Model):
@@ -93,7 +45,7 @@ class Visitor(models.Model):
     document = models.CharField(max_length=20, unique=True, verbose_name='Documento do Visitante')
     telephone = models.CharField(max_length=11, blank=True, null=True, verbose_name='Telefone do Visitante')
     registered_by = models.ForeignKey(
-        CustomUser,
+        Person,
         on_delete=models.CASCADE,
         related_name='registered_visitors',
         verbose_name='Cadastrado por',
@@ -104,14 +56,14 @@ class Visitor(models.Model):
         verbose_name_plural = 'Visitantes'
 
     def __str__(self):
-        return f'Visitante {self.name} - Cadastrado por {self.registered_by}'
+        return f'Visitante {self.name}'
 
 
 # Definindo o modelo de Apartamento
 class Apartment(models.Model):
     # Definindo os campos do modelo
     registered_by = models.ForeignKey(
-        CustomUser,
+        Person,
         on_delete=models.CASCADE,
         related_name='registered_apartments',
         verbose_name='Cadastrado por'
@@ -122,7 +74,7 @@ class Apartment(models.Model):
     tread = models.IntegerField(verbose_name='Piso')
 
     residents = models.ManyToManyField(
-        CustomUser,
+        Person,
         related_name='apartments',
         verbose_name='Moradores',
         blank=True,
@@ -208,7 +160,7 @@ class Reservation(models.Model):
     ]
     # Definindo os campos do modelo
     resident = models.ForeignKey(
-        CustomUser,
+        Person,
         on_delete=models.CASCADE,
         related_name='reservations',
         verbose_name='Morador',
@@ -254,7 +206,7 @@ class Reservation(models.Model):
 class Communication(models.Model):
     # Definindo os campos do modelo
     sender = models.ForeignKey(
-        CustomUser,
+        Person,
         on_delete=models.CASCADE,
         related_name='communications',
         verbose_name='Remetente'
@@ -262,7 +214,7 @@ class Communication(models.Model):
     subject = models.CharField(max_length=255, verbose_name='Assunto')
     message = models.TextField(verbose_name='Mensagem')
     recipients = models.ManyToManyField(
-        CustomUser,
+        Person,
         related_name='received_communications',
         verbose_name='Destinatários',
     )
@@ -286,7 +238,7 @@ class Communication(models.Model):
 class Finance(models.Model):
     # Definindo os campos do modelo
     creator = models.ForeignKey(
-        CustomUser,
+        Person,
         on_delete=models.CASCADE,
         related_name='finance',
         verbose_name='Criador'
@@ -325,7 +277,7 @@ class Finance(models.Model):
 class Vehicle(models.Model):
     # Definindo os campos do modelo
     registered_by = models.ForeignKey(
-        CustomUser,
+        Person,
         on_delete=models.CASCADE,
         related_name='registered_vehicles',
         verbose_name='Cadastrado por'
@@ -334,7 +286,7 @@ class Vehicle(models.Model):
     model = models.CharField(max_length=50, verbose_name='Modelo do Veículo')
     color = models.CharField(max_length=20, verbose_name='Cor do Veículo')
     owner = models.ForeignKey(
-        CustomUser,
+        Person,
         on_delete=models.CASCADE,
         related_name='vehicles',
         verbose_name='Proprietário'
@@ -356,7 +308,7 @@ class Orders(models.Model):
         ('entregue', 'Entregue'),
     ]
     registered_by = models.ForeignKey(
-        CustomUser,
+        Person,
         on_delete=models.CASCADE,
         related_name='registered_orders',
         verbose_name='Cadastrado por'
@@ -373,7 +325,7 @@ class Orders(models.Model):
     order_date = models.DateTimeField(auto_now_add=True, verbose_name='Data do Recebimento')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES ,verbose_name='Status do Pedido', default='recebido')
     owner = models.ForeignKey(
-        CustomUser,
+        Person,
         on_delete=models.CASCADE,
         related_name='orders',
         verbose_name='Proprietário do Pedido'

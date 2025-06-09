@@ -1,12 +1,10 @@
-
-from rest_framework.authtoken.models import Token
 from django.contrib import admin
 from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.models import Group
 from unfold.admin import ModelAdmin
 from unfold.forms import AdminPasswordChangeForm, UserCreationForm, UserChangeForm
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import Apartment, CustomUser, Visitor, Reservation, Communication, Finance, Vehicle, Orders, Visit
+from .models import Apartment,Visitor, Reservation, Communication, Finance, Vehicle, Orders, Visit, Person
 from .forms import VisitorForm, CommunicationForm, ReservationForm, FinanceForm, VehicleForm, ApartmentForm, OrdersForm
 
 admin.site.unregister(Group)
@@ -29,29 +27,12 @@ class ApartmentAdmin(ModelAdmin):
 
 # Cadastro do modelo 'CustomUser' no site de administração, para que os síndicos e administradores possam gerenciar
 # os Usuários.
-@admin.register(CustomUser)
-class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
-    model = CustomUser
-    add_form = UserCreationForm
-    form = UserChangeForm
-    change_password_form = AdminPasswordChangeForm
-
-    list_display = ('id','email', 'name','user_type', 'is_staff', 'date_joined', 'last_login')
-    list_filter = ('user_type', 'is_staff', 'is_superuser')
-    search_fields = ('email', 'name')
-    ordering = ('email',)
-
-    fieldsets = (
-        (None, {'fields': ('email', 'password')}),
-        ('Informações Pessoais', {'fields': ('name', 'document', 'telephone', 'user_type')}),
-        ('Permissões', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
-    )
-    add_fieldsets = (
-        (None, {
-            'classes': ('wide',),
-            'fields': ('email', 'name', 'document', 'telephone', 'user_type', 'password1', 'password2'),
-        }),
-    )
+@admin.register(Person)
+class CustomUserAdmin(ModelAdmin):
+    list_display = ('id', 'name', 'document', 'user_type',)
+    list_filter = ('user_type',)
+    search_fields = ('name', 'document')
+    ordering = ('name',)
 
 # Cadastro do modelo 'Visitante' no site de administração, para que os moradores, síndicos e administradores possam gerenciar
 # os Visitantes.
@@ -127,7 +108,7 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
 @admin.register(Orders)
 class OrdersAdmin(ModelAdmin):
     list_display = ('id', 'order_code', 'status', 'order_date', 'owner', 'registered_by')
-    search_fields = ('owner__email', 'order_date')
+    search_fields = ('owner__document', 'order_date')
     ordering = ('-order_date',)
     form = OrdersForm
 

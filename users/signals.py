@@ -1,7 +1,8 @@
 from django.db.models.signals import post_migrate, post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import Group, Permission
-from .models import CustomUser
+from users.models import Profile
+from core.models import Person
 
 @receiver(post_migrate)
 def create_user_group_and_permissions(sender, **kwargs):
@@ -48,11 +49,8 @@ def create_user_group_and_permissions(sender, **kwargs):
             except Permission.DoesNotExist:
                 print(f'Permissão "{codename}" não encontrada.')
 
-@receiver(post_save, sender=CustomUser)
+@receiver(post_save, sender=Person)
 def assign_user_to_group(sender, instance, created, **kwargs):
-    """
-    Adiciona o usuário a um grupo específico após a criação.
-    """
     if created:
         try:
             if instance.user_type == 'morador':
@@ -61,6 +59,6 @@ def assign_user_to_group(sender, instance, created, **kwargs):
                 group = Group.objects.get(name='Administracao')
             elif instance.user_type == 'sindico':
                 group = Group.objects.get(name='Síndico')
-            instance.groups.add(group)
+            instance.profile.groups.add(group)
         except Group.DoesNotExist:
             print(f'Grupo para o tipo de usuário "{instance.user_type}" não encontrado.')

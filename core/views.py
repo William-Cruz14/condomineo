@@ -5,13 +5,12 @@ from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from django.db.models import Q
-
-from .models import CustomUser, Visitor, Reservation, Communication, Apartment, Vehicle, Finance, Orders, Visit
+from users.models import Profile
+from .models import Person, Visitor, Reservation, Communication, Apartment, Vehicle, Finance, Orders, Visit
 from .serializers import (
-    CustomUserSerializer, CustomUserCreateSerializer, VisitorSerializer,
+    ProfileSerializer, PersonSerializer, VisitorSerializer,
     ReservationSerializer, CommunicationSerializer, ApartmentSerializer, VehicleSerializer, FinanceSerializer,
     OrdersSerializer)
-
 
 # Autenticação por token
 class CustomAuthToken(ObtainAuthToken):
@@ -23,33 +22,39 @@ class CustomAuthToken(ObtainAuthToken):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
+
+        # Tenta buscar a pessoa associada ao perfil
+        person_data = {}
+        try:
+            if hasattr(user, 'person'):
+                person = user.person
+                person_data = {
+                    'name': person.name,
+                    'user_type': person.user_type
+                }
+        except:
+            pass
+
         return Response({
             'token': token.key,
             'user': {
                 'user_id': user.pk,
                 'email': user.email,
-                'name': user.name,
-                'user_type': user.user_type,
+                **person_data
             }
-
         })
 
-# ViewSets para o modelo CustomUser, Visitor, Reservation, Communication e Apartment
-class UserViewSet(viewsets.ModelViewSet):
-    serializer_class = CustomUserSerializer
-    permission_classes = [DjangoModelPermissions,]
-    # Sobrescrevendo o método get_serializer_class para retornar o CustomUserCreateSerializer quando a ação for 'create'
-    def get_serializer_class(self):
-        if self.action == 'create':
-            return CustomUserCreateSerializer
-        return super().get_serializer_class()
 
-    # Sobrescreve o método get_queryset para filtrar os usuários de acordo com o usuário logado
+# ViewSet para o modelo Profile (autenticação)
+class UserViewSet(viewsets.ModelViewSet):
+    serializer_class = ProfileSerializer
+    permission_classes = [DjangoModelPermissions, ]
+
     def get_queryset(self):
         user = self.request.user
         if user.is_staff:
-            return CustomUser.objects.all()
-        return CustomUser.objects.filter(id=user.id)
+            return Profile.objects.all()
+        return Profile.objects.filter(id=user.id)
 
     @action(detail=False, methods=['get', 'put'], url_path='me')
     def me(self, request):
@@ -66,11 +71,20 @@ class UserViewSet(viewsets.ModelViewSet):
 
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=['get'])
-    def apartment(self, request, pk=None):
-        user = request.user
-        serializer = ApartmentSerializer(user.apartment, many=False)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+# ViewSet para o modelo Person (domínio)
+class PersonViewSet(viewsets.ModelViewSet):
+    serializer_class = PersonSerializer
+    permission_classes = [DjangoModelPermissions, ]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return Person.objects.all()
+        return Person.objects.filter(profile=user)
+
+    def perform_create(self, serializer):
+        serializer.save(profile=self.request.user)
 
 class VisitorViewSet(viewsets.ModelViewSet):
     serializer_class = VisitorSerializer
