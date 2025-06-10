@@ -4,6 +4,20 @@ from django.contrib.auth.models import Group, Permission
 from users.models import Profile
 from core.models import Person
 
+@receiver(post_save, sender=Profile)
+def create_person(sender, instance, created, **kwargs):
+    if created:
+        Person.objects.create(
+            profile=instance,
+            name=instance.name,
+            email=instance.email,
+        )
+
+@receiver(post_save, sender=Profile)
+def save_person(sender, instance, **kwargs):
+    instance.person.save()
+
+
 @receiver(post_migrate)
 def create_user_group_and_permissions(sender, **kwargs):
     """

@@ -4,14 +4,15 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from users.models import Profile
 
-
 # Criando um modelo personalizado que abranja Sindico, Morador e Administração
 class Person(models.Model):
     # Definindo os campos do modelo
     name = models.CharField(verbose_name='Nome Completo', max_length=255)
+    email = models.EmailField(verbose_name='E-mail', max_length=255)
     document = models.CharField(max_length=20, unique=True, blank=True, null=True, verbose_name='Documento de Identificação')
     telephone = models.CharField(max_length=11, blank=True, null=True, verbose_name='Telefone')
-    profile = models.OneToOneField(Profile, on_delete=models.CASCADE, related_name='person')
+
+    profile = models.OneToOneField('users.Profile', on_delete=models.CASCADE, related_name='person', verbose_name='Pessoa')
 
     # Definindo os tipos de usuários disponíveis
     USER_TYPE_CHOICES = [
@@ -62,16 +63,14 @@ class Visitor(models.Model):
 # Definindo o modelo de Apartamento
 class Apartment(models.Model):
     # Definindo os campos do modelo
-    registered_by = models.ForeignKey(
-        Person,
-        on_delete=models.CASCADE,
-        related_name='registered_apartments',
-        verbose_name='Cadastrado por'
-    )
-
     number = models.CharField(max_length=10, unique=True, verbose_name='Número do Apartamento')
     block = models.CharField(max_length=10, verbose_name='Bloco')
     tread = models.IntegerField(verbose_name='Piso')
+
+    OCCUPATION_CHOICES = [
+        (True, 'Ocupado'),
+        (False, 'Desocupado'),
+    ]
 
     residents = models.ManyToManyField(
         Person,
@@ -89,7 +88,11 @@ class Apartment(models.Model):
 
     entry_date = models.DateField(auto_now=True)
     exit_date = models.DateField(null=True, blank=True, verbose_name='Data de Saída')
-    occupation = models.BooleanField(default=False, verbose_name='Ocupação')
+    occupation = models.BooleanField(
+        default=False,
+        verbose_name='Ocupação',
+        choices=OCCUPATION_CHOICES,
+    )
 
     class Meta:
         verbose_name = 'Apartamento'

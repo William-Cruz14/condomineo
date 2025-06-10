@@ -11,7 +11,6 @@ admin.site.unregister(Group)
 
 # Cadastro do modelo 'Apartamento' no site de administração, para que os síndicos e administradores possam gerenciar
 # os Apartamentos.
-
 @admin.register(Apartment)
 class ApartmentAdmin(ModelAdmin):
     model = Apartment
@@ -19,17 +18,12 @@ class ApartmentAdmin(ModelAdmin):
     list_display = ('number', 'block', 'tread', 'occupation')
     search_fields = ('number', 'block')
 
-    def save_model(self, request, obj, form, change):
-        if not obj.pk:
-            obj.registered_by = request.user
-        super().save_model(request, obj, form, change)
-
 
 # Cadastro do modelo 'CustomUser' no site de administração, para que os síndicos e administradores possam gerenciar
 # os Usuários.
 @admin.register(Person)
 class CustomUserAdmin(ModelAdmin):
-    list_display = ('id', 'name', 'document', 'user_type',)
+    list_display = ('id', 'name', 'email', 'document', 'user_type',)
     list_filter = ('user_type',)
     search_fields = ('name', 'document')
     ordering = ('name',)
@@ -43,10 +37,13 @@ class VisitorAdmin(ModelAdmin):
     form = VisitorForm
 
     def save_model(self, request, obj, form, change):
-        if not obj.pk:
-            obj.registered_by = request.user
-        super().save_model(request, obj, form, change)
+        if not change:
+            obj.registered_by = Person.objects.get_or_create(
+                profile=request.user,
+                defaults={'name': getattr(request.user, 'name', request.user.email)}
+            )[0]
 
+        super().save_model(request, obj, form, change)
 # Cadastro do modelo 'Reserva' no site de administração, para que os moradores, síndicos e administradores possam gerenciar
 # as reservas.
 @admin.register(Reservation)
@@ -57,23 +54,29 @@ class ReservationAdmin(ModelAdmin):
     form = ReservationForm
 
     def save_model(self, request, obj, form, change):
-        if not obj.pk:
-            obj.resident = request.user
-        super().save_model(request, obj, form, change)
+        if not change:
+            obj.resident = Person.objects.get_or_create(
+                profile=request.user,
+                defaults={'name': getattr(request.user, 'name', request.user.email)}
+            )[0]
 
+        super().save_model(request, obj, form, change)
 # Cadastro do modelo 'Comunicação' no site de administração, para que os síndicos e administradores possam gerenciar
 # as comunicações.
 @admin.register(Communication)
 class CommunicationAdmin(ModelAdmin):
-    list_display = ('sender', 'subject', 'sent_at')
+    list_display = ('sender','subject', 'sent_at')
     search_fields = ('subject', 'sent_at')
     form = CommunicationForm
 
     def save_model(self, request, obj, form, change):
-        if not obj.pk:
-            obj.sender = request.user
-        super().save_model(request, obj, form, change)
+        if not change:
+            obj.sender = Person.objects.get_or_create(
+                profile=request.user,
+                defaults={'name': getattr(request.user, 'name', request.user.email)}
+            )[0]
 
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(Finance)
@@ -84,8 +87,12 @@ class FinanceAdmin(ModelAdmin):
     form = FinanceForm
 
     def save_model(self, request, obj, form, change):
-        if not obj.pk:
-            obj.creator = request.user
+        if not change:
+            obj.creator = Person.objects.get_or_create(
+                profile=request.user,
+                defaults={'name': getattr(request.user, 'name', request.user.email)}
+            )[0]
+
         super().save_model(request, obj, form, change)
 
 
@@ -96,8 +103,12 @@ class VehicleAdmin(ModelAdmin):
     form = VehicleForm
 
     def save_model(self, request, obj, form, change):
-        if not obj.pk:
-            obj.registered_by = request.user
+        if not change:
+            obj.registered_by = Person.objects.get_or_create(
+                profile=request.user,
+                defaults={'name': getattr(request.user, 'name', request.user.email)}
+            )[0]
+
         super().save_model(request, obj, form, change)
 
 # Cadastro do modelo 'Grupo' no site de administração, para que os síndicos e administradores possam gerenciar
@@ -113,10 +124,13 @@ class OrdersAdmin(ModelAdmin):
     form = OrdersForm
 
     def save_model(self, request, obj, form, change):
-        if not obj.pk:
-            obj.registered_by = request.user
-        super().save_model(request, obj, form, change)
+        if not change:
+            obj.registered_by = Person.objects.get_or_create(
+                profile=request.user,
+                defaults={'name': getattr(request.user, 'name', request.user.email)}
+            )[0]
 
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(Visit)
@@ -124,3 +138,4 @@ class VisitAdmin(ModelAdmin):
     list_display = ('visitor', 'apartment', 'entry_date', 'exit_date')
     search_fields = ('visitor__name', 'apartment__number',)
     ordering = ('-apartment',)
+
