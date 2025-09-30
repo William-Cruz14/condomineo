@@ -1,39 +1,29 @@
 from django.urls import path, include
-from drf_yasg.views import get_schema_view
-from drf_yasg import openapi
-from rest_framework.permissions import DjangoModelPermissions
 from rest_framework.routers import DefaultRouter
-from .views import (CustomAuthToken, UserViewSet, VisitorViewSet,
-                    ReservationViewSet, CommunicationViewSet, ApartmentViewSet, FinanceViewSet, VehicleViewSet,
-                    OrdersViewSet, PersonViewSet)
+from rest_framework.permissions import DjangoModelPermissions
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+from .views import (
+    VisitorViewSet, ReservationViewSet, ApartmentViewSet,
+    FinanceViewSet, VehicleViewSet, OrderViewSet, VisitViewSet, CondominiumViewSet
+    )
 
 router = DefaultRouter()
-router.register(r'users', UserViewSet, basename='user')
+#router.register(r'users', UserViewSet, basename='user')
 router.register(r'visitors', VisitorViewSet, basename='visitor')
 router.register(r'reservations', ReservationViewSet, basename='reservation')
-router.register(r'communications', CommunicationViewSet, basename='communication')
 router.register(r'apartments', ApartmentViewSet, basename='apartment')
 router.register(r'finances', FinanceViewSet, basename='finance')
 router.register(r'vehicles', VehicleViewSet, basename='vehicle')
-router.register(r'persons', PersonViewSet, basename='person')
-router.register(r'orders', OrdersViewSet, basename='orders')
-
-schema_view = get_schema_view(
-    openapi.Info(
-        title="Condomineo API",
-        default_version='v1',
-        description="API de um sistema de gestão de condomínio",
-    ),
-    public=True,
-    permission_classes=[DjangoModelPermissions,],
-)
+router.register(r'orders', OrderViewSet, basename='order')
+router.register(r'visits', VisitViewSet, basename='visit')
+router.register(r'condominiums', CondominiumViewSet, basename='condominium')
 
 urlpatterns = [
-    # Documentação da API com Swagger
-    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    # Documentação da API com ReDoc
-    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
-    path('api/', include(router.urls)),
-    path('api/auth/', CustomAuthToken.as_view()),
-    path('api-auth/', include('rest_framework.urls')),  # login/logout para navegador
+    # Schema OpenAPI
+    path('schema/', SpectacularAPIView.as_view(), name='schema'),
+    # Swagger UI
+    path('swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    # Redoc UI
+    path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    path('v1/', include(router.urls)),
 ]

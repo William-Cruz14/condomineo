@@ -1,22 +1,12 @@
 from django import forms
-from .models import Visitor, Reservation, Communication, Finance, Vehicle, Apartment, Orders
+from .models import Visitor, Reservation, Finance, Vehicle, Apartment, Order
 
-
-# Definindo o formulário de visitante
-class CommunicationForm(forms.ModelForm):
-    class Meta:
-        model = Communication
-        fields = ['recipients', 'subject', 'message']
-
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
 
 # Definindo o formulário de reserva
 class ReservationForm(forms.ModelForm):
     class Meta:
         model = Reservation
-        fields = ['space', 'start_time', 'end_time']
+        fields = ['space', 'resident', 'start_time', 'end_time']
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
@@ -26,17 +16,18 @@ class ReservationForm(forms.ModelForm):
 class ApartmentForm(forms.ModelForm):
     class Meta:
         model = Apartment
-        fields = ['number', 'block', 'tread', 'residents', 'occupation', 'exit_date']
+        fields = ['condominium', 'number', 'block', 'tread', 'occupation', 'exit_date']
 
+    """
     def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
+        self.user = kwargs.pop('user', None) 
         super().__init__(*args, **kwargs)
-
+    """
 # Definindo o formulário de visitante
 class VisitorForm(forms.ModelForm):
     class Meta:
         model = Visitor
-        fields = ['name', 'document', 'telephone',]
+        fields = ['condominium', 'name', 'cpf', 'telephone']
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
@@ -45,7 +36,7 @@ class VisitorForm(forms.ModelForm):
 class FinanceForm(forms.ModelForm):
     class Meta:
         model = Finance
-        fields = ['value', 'description', 'document']
+        fields = ['condominium', 'value', 'description', 'document']
 
 
     def __init__(self, *args, **kwargs):
@@ -55,16 +46,16 @@ class FinanceForm(forms.ModelForm):
 class VehicleForm(forms.ModelForm):
     class Meta:
         model = Vehicle
-        fields = ['plate', 'model', 'color', 'garage', 'owner']
+        fields = ['condominium', 'plate', 'model', 'color', 'garage', 'owner']
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
 
-class OrdersForm(forms.ModelForm):
+class OrderForm(forms.ModelForm):
     class Meta:
-        model = Orders
+        model = Order
         fields = ['order_code','status', 'owner', 'signature_image']
 
     def __init__(self, *args, **kwargs):

@@ -1,208 +1,230 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import DjangoModelPermissions
-from rest_framework.response import Response
-from rest_framework.decorators import action
-from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.authtoken.models import Token
+from .models import Condominium, Visitor, Reservation, Apartment, Vehicle, Finance, Order, Visit
 from django.db.models import Q
-from users.models import Profile
-from .models import Person, Visitor, Reservation, Communication, Apartment, Vehicle, Finance, Orders, Visit
 from .serializers import (
-    ProfileSerializer, PersonSerializer, VisitorSerializer,
-    ReservationSerializer, CommunicationSerializer, ApartmentSerializer, VehicleSerializer, FinanceSerializer,
-    OrdersSerializer)
-
-# Autenticação por token
-class CustomAuthToken(ObtainAuthToken):
-    def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(
-            data=request.data,
-            context={'request': request}
-        )
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-        token, created = Token.objects.get_or_create(user=user)
-
-        # Tenta buscar a pessoa associada ao perfil
-        person_data = {}
-        try:
-            if hasattr(user, 'person'):
-                person = user.person
-                person_data = {
-                    'name': person.name,
-                    'user_type': person.user_type
-                }
-        except:
-            pass
-
-        return Response({
-            'token': token.key,
-            'user': {
-                'user_id': user.pk,
-                'email': user.email,
-                **person_data
-            }
-        })
-
-
-# ViewSet para o modelo Profile (autenticação)
-class UserViewSet(viewsets.ModelViewSet):
-    serializer_class = ProfileSerializer
-    permission_classes = [DjangoModelPermissions, ]
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.is_staff:
-            return Profile.objects.all()
-        return Profile.objects.filter(id=user.id)
-
-    @action(detail=False, methods=['get', 'put'], url_path='me')
-    def me(self, request):
-        user = self.request.user
-        if request.method == 'GET':
-            serializer = self.get_serializer(user)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        elif request.method == 'PUT':
-            serializer = self.get_serializer(user, data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-
-
-# ViewSet para o modelo Person (domínio)
-class PersonViewSet(viewsets.ModelViewSet):
-    serializer_class = PersonSerializer
-    permission_classes = [DjangoModelPermissions, ]
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.is_staff:
-            return Person.objects.all()
-        return Person.objects.filter(profile=user)
-
-    def perform_create(self, serializer):
-        serializer.save(profile=self.request.user)
+    VisitorSerializer, ReservationSerializer, ApartmentSerializer,
+    VehicleSerializer, FinanceSerializer, OrderSerializer, VisitSerializer, CondominiumSerializer
+)
+from .permissions import IsOwnerOrAdmin
+from .filters import (
+    ApartmentFilter, VehicleFilter, FinanceFilter,
+    ReservationFilter, VisitorFilter, OrderFilter, CondominiumFilter
+)
 
 class VisitorViewSet(viewsets.ModelViewSet):
     serializer_class = VisitorSerializer
-    permission_classes = [DjangoModelPermissions,]
+    permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
+    filterset_class = VisitorFilter
+    search_fields = ('name', 'cpf')
+    ordering_fields = ('name', 'cpf')
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
-            return Visitor.objects.all()
-        return Visitor.objects.filter(registered_by=user)
+        query_base = Visitor.objects.select_related('condominium', 'registered_by', 'apartment')
+
+        if user.user_type == 'admin':
+            return query_base.filter(condominium__in=user.managed_condominiums.all())
+        elif user.apartment:
+            return query_base.filter(apartment=user.apartment)
+        else:
+            return query_base.filter(registered_by=user)
 
     def perform_create(self, serializer):
-        serializer.save(registered_by=self.request.user)
+        condominium = None
+        if self.request.user.apartment:
+            condominium = self.request.user.apartment.condominium
+        elif self.request.user.user_type == 'admin':
+            condominium = serializer.validated_data.get('condominium')
+
+        serializer.save(registered_by=self.request.user, condominium=condominium)
 
 class ReservationViewSet(viewsets.ModelViewSet):
     serializer_class = ReservationSerializer
-    permission_classes = [DjangoModelPermissions,]
+    permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
+    filterset_class = ReservationFilter
+    search_fields = ('space',)
+    ordering_fields = ('start_time', 'end_time')
 
-    # Sobrescreve o método get_queryset para filtrar as reservas de acordo com o usuário logado
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
-            return Reservation.objects.all()
-        return Reservation.objects.filter(resident=user)
+        query_base = Reservation.objects.select_related('resident__apartment')
 
-    # Sobrescreve o método perform_create para salvar o usuário logado como o criador da reserva.
+        if user.is_superuser:
+            return query_base
+
+        if user.user_type == 'admin':
+            managed_condos = user.managed_condominiums.all()
+            return query_base.filter(resident__apartment__condominium__in=managed_condos)
+
+        if user.apartment:
+            return query_base.filter(resident__apartment__condominium=user.apartment.condominium)
+
+        return query_base.filter(resident=user)
+
     def perform_create(self, serializer):
         serializer.save(resident=self.request.user)
 
-
-class CommunicationViewSet(viewsets.ModelViewSet):
-    serializer_class = CommunicationSerializer
-    permission_classes = [DjangoModelPermissions,]
-
-    # Sobrescreve o método get_queryset para filtrar as comunicações de acordo com o usuário logado
-    def get_queryset(self):
-        user = self.request.user
-        if user.is_staff:
-            return Communication.objects.all()
-        return Communication.objects.filter(
-            Q(sender=user) | Q(recipients=user)
-        )
-
-    # Sobrescreve o método perform_create para salvar o usuário logado como o criador da comunicação.
-    def perform_create(self, serializer):
-        serializer.save(sender=self.request.user)
 
 class ApartmentViewSet(viewsets.ModelViewSet):
-    permission_classes = [DjangoModelPermissions,]
+    permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
     serializer_class = ApartmentSerializer
+    filterset_class = ApartmentFilter
+    search_fields = ('number', 'block')
+    ordering_fields = ('number', 'block', 'tread')
 
-    # Sobrescreve o método get_queryset para filtrar os apartamentos de acordo com o usuário logado
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
-            return Apartment.objects.all()
-        return Apartment.objects.filter(residents=user)
+        query_base = Apartment.objects.select_related('condominium')
 
-    # Sobrescreve o método perform_create para salvar o usuário logado como o criador do apartamento.
+        if user.is_superuser:
+            return query_base
+
+        if user.user_type == 'admin':
+            return query_base.filter(condominium__in=user.managed_condominiums.all())
+
+        if user.user_type == 'resident' and user.apartment:
+            return query_base.filter(id=user.apartment.id)
+
+        return query_base.filter(residents=user)
+
     def perform_create(self, serializer):
-        serializer.save(registered_by=self.request.user)
+        if self.request.user.user_type != 'admin':
+            raise PermissionDenied("Apenas administradores podem criar apartamentos.")
+        else:
+            serializer.save()
 
 class VisitViewSet(viewsets.ModelViewSet):
-    permission_classes = [DjangoModelPermissions,]
-    serializer_class = VisitorSerializer
+    permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
+    serializer_class = VisitSerializer
+    search_fields = ('visitor__name',)
+    ordering_fields = ('entry_date',)
 
-    # Sobrescreve o método get_queryset para filtrar as visitas de acordo com o usuário logado
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
-            return Visit.objects.all()
-        return Visit.objects.filter(resident=user)
+        query_base = Visit.objects.select_related('visitor', 'apartment', 'registered_by')
 
-    # Sobrescreve o método perform_create para salvar o usuário logado como o criador da visita.
-    def perform_create(self, serializer):
-        serializer.save(resident=self.request.user)
-class VehicleViewSet(viewsets.ModelViewSet):
-    permission_classes = [DjangoModelPermissions,]
-    serializer_class = VehicleSerializer
+        if user.user_type == 'admin':
+            managed_condos = user.managed_condominiums.all()
+            return query_base.filter(apartment__condominium__in=managed_condos)
 
-    # Sobrescreve o método get_queryset para filtrar os veículos de acordo com o usuário logado
-    def get_queryset(self):
-        user = self.request.user
-        if user.is_staff:
-            return Vehicle.objects.all()
-        return Vehicle.objects.filter(owner=user)
+        if user.apartment:
+            return query_base.filter(apartment=user.apartment)
 
-    # Sobrescreve o método perform_create para salvar o usuário logado como o criador do veículo.
+        return query_base.filter(registered_by=user)
+
     def perform_create(self, serializer):
         serializer.save(registered_by=self.request.user)
+
+class VehicleViewSet(viewsets.ModelViewSet):
+    permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
+    serializer_class = VehicleSerializer
+    filterset_class = VehicleFilter
+    search_fields = ('plate', 'model')
+    ordering_fields = ('plate', 'model')
+
+    def get_queryset(self):
+        user = self.request.user
+        query_base = Vehicle.objects.select_related('owner', 'condominium', 'registered_by')
+
+        if user.is_superuser:
+            return query_base
+
+        if user.user_type == 'admin':
+            return query_base.filter(condominium__in=user.managed_condominiums.all())
+        elif user.user_type == 'resident':
+            return query_base.filter(owner=user)
+        else:
+            return query_base.filter(registered_by=user)
+
+
+
+    def perform_create(self, serializer):
+        condominium = None
+        if self.request.user.apartment:
+            condominium = self.request.user.apartment.condominium
+        elif self.request.user.user_type == 'admin':
+            condominium = serializer.validated_data.get('condominium')
+
+        serializer.save(registered_by=self.request.user, condominium=condominium)
 
 class FinanceViewSet(viewsets.ModelViewSet):
-    permission_classes = [DjangoModelPermissions,]
+    permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
     serializer_class = FinanceSerializer
+    filterset_class = FinanceFilter
+    search_fields = ('description',)
+    ordering_fields = ('date',)
 
-    # Sobrescreve o método get_queryset para filtrar as finanças de acordo com o usuário logado
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
-            return Finance.objects.all()
-        return Finance.objects.filter(creator=user)
+        query_base = Finance.objects.select_related('creator', 'condominium')
 
-    # Sobrescreve o método perform_create para salvar o usuário logado como o criador da finança.
+        if user.is_superuser:
+            return query_base
+
+        if user.user_type == 'admin':
+            return query_base.filter(condominium__in=user.managed_condominiums.all())
+
+        if user.apartment:
+            return query_base.filter(condominium=user.apartment.condominium)
+
+        return query_base.filter(creator=user)
+
     def perform_create(self, serializer):
-        serializer.save(creator=self.request.user)
+        condominium = None
+        if self.request.user.apartment:
+            condominium = self.request.user.apartment.condominium
+        elif self.request.user.user_type == 'admin':
+            condominium = serializer.validated_data.get('condominium')
 
+        serializer.save(creator=self.request.user, condominium=condominium)
 
-class OrdersViewSet(viewsets.ModelViewSet):
-    permission_classes = [DjangoModelPermissions,]
-    serializer_class = OrdersSerializer
+class OrderViewSet(viewsets.ModelViewSet):
+    permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
+    serializer_class = OrderSerializer
+    filterset_class = OrderFilter
+    search_fields = ('order_code',)
+    ordering_fields = ('order_date',)
 
-    # Sobrescreve o método get_queryset para filtrar os pedidos de acordo com o usuário logado
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
-            return Orders.objects.all()
-        return Orders.objects.filter(creator=user)
+        query_base = Order.objects.select_related('owner', 'registered_by')
 
-    # Sobrescreve o método perform_create para salvar o usuário logado como o criador do pedido.
+        if user.user_type == 'admin':
+            managed_condos = user.managed_condominiums.all()
+            return query_base.filter(owner__apartment__condominium__in=managed_condos)
+
+        elif user.apartment:
+            return query_base.filter(owner=user)
+        else:
+            return query_base.filter(registered_by=user)
+
     def perform_create(self, serializer):
         serializer.save(registered_by=self.request.user)
+
+# Adicionei um ViewSet para Condominium
+class CondominiumViewSet(viewsets.ModelViewSet):
+    permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
+    serializer_class = CondominiumSerializer
+    filterset_class = CondominiumFilter
+    search_fields = ('name', 'cnpj')
+    ordering_fields = ('name',)
+
+    def get_queryset(self):
+        user = self.request.user
+        query_base = Condominium.objects.all()
+
+        if user.user_type == 'admin':
+            return query_base.filter(Q(id__in=user.managed_condominiums.all()) | Q(created_by=user))
+
+        if user.apartment:
+            return query_base.filter(id=user.apartment.condominium.id)
+
+        return Condominium.objects.none()
+
+    def perform_create(self, serializer):
+        if self.request.user.user_type != 'admin':
+            raise PermissionDenied("Apenas administradores podem criar condomínios.")
+        else:
+            serializer.save(created_by=self.request.user)

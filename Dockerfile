@@ -5,17 +5,16 @@ LABEL authors="william"
 
 # Working directory
 WORKDIR /app
-
+ENV PYTHONNUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 # Copy requirements file and install dependencies
-COPY requirements.txt /app/
+COPY requirements.txt .
+
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the project files
-COPY . /app/
-
-# Expose the server port
-EXPOSE 8000
+COPY . .
 
 # Command to start the server
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "condomineo.wsgi"]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

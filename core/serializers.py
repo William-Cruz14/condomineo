@@ -1,28 +1,35 @@
 from rest_framework import serializers
-from .models import Person, Visitor, Reservation, Communication, Apartment, Finance, Vehicle, Orders, Visit
-from users.models import Profile
+from .models import Visitor, Reservation, Apartment, Finance, Vehicle, Order, Visit, Condominium
 
-# Serializer para Profile (autenticação)
-class ProfileSerializer(serializers.ModelSerializer):
+class CondominiumSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Profile
-        fields = ('id', 'email', 'first_name', 'last_name')
+        model = Condominium
+        fields = (
+            'id', 'name', 'road', 'number', 'complement', 'cnpj',
+            'code_condominium', 'created_at', 'created_by'
+        )
 
-# Serializer para Person (domínio)
-class PersonSerializer(serializers.ModelSerializer):
-    profile = ProfileSerializer(read_only=True)
+        extra_kwargs = {
+            'code_condominium': {'read_only': True},
+            'created_at': {'read_only': True},
+            'created_by': {'read_only': True},
+        }
 
-    class Meta:
-        model = Person
-        fields = ('id', 'name', 'document', 'telephone', 'user_type', 'profile')
 
 class VisitorSerializer(serializers.ModelSerializer):
     # O campo 'registered_by' é somente leitura, pois é preenchido automaticamente com o usuário autenticado
     registered_by = serializers.PrimaryKeyRelatedField(read_only=True)
+    condominium = CondominiumSerializer(read_only=True)
+    condominium_id = serializers.PrimaryKeyRelatedField(
+        queryset=Condominium.objects.all(),
+        source='condominium',
+        write_only=True
+    )
 
     class Meta:
         model = Visitor
-        fields = ('id', 'name', 'document', 'registered_by',)
+        fields = ('id', 'name', 'cpf', 'telephone', 'registered_by', 'condominium', 'condominium_id')
+
 
 
 class ReservationSerializer(serializers.ModelSerializer):
@@ -34,49 +41,37 @@ class ReservationSerializer(serializers.ModelSerializer):
         model = Reservation
         fields = ('id', 'resident', 'space', 'start_time', 'end_time')
 
-class CommunicationSerializer(serializers.ModelSerializer):
 
-    # O campo 'recipients' é um campo de chave estrangeira que permite selecionar vários usuários
-    recipients = serializers.PrimaryKeyRelatedField(
-        queryset=Person.objects.all(),
-        many=True,
-    )
-    # O campo 'sender' é somente leitura, pois é preenchido automaticamente com o usuário autenticado
-    sender = serializers.PrimaryKeyRelatedField(read_only=True)
-
-    class Meta:
-        model = Communication
-        fields = ('id', 'sender', 'subject', 'message', 'sent_at', 'recipients')
 
 class FinanceSerializer(serializers.ModelSerializer):
     creator = serializers.PrimaryKeyRelatedField(read_only=True)
+    condominium = CondominiumSerializer(read_only=True)
+    condominium_id = serializers.PrimaryKeyRelatedField(
+        queryset=Condominium.objects.all(),
+        source='condominium',
+        write_only=True
+    )
 
     class Meta:
         model = Finance
-        fields = ('id', 'creator', 'value', 'date', 'description', 'document')
+        fields = ('id', 'creator', 'value', 'date', 'description', 'document', 'condominium', 'condominium_id')
 
 class ApartmentSerializer(serializers.ModelSerializer):
-    # O campo 'residents' é um campo de chave estrangeira que permite selecionar vários usuários
-    residents = serializers.PrimaryKeyRelatedField(
-        queryset=Person.objects.all(),
-        many=True,
-        required=False,
-    )
-
-
-    # O campo 'registered_by' é somente leitura, pois é preenchido automaticamente com o usuário autenticado
-    registered_by = serializers.PrimaryKeyRelatedField(read_only=True)
-    visitors = serializers.PrimaryKeyRelatedField(read_only=True)
+    condominium = serializers.PrimaryKeyRelatedField(queryset=Condominium.objects.all())
+    condominium_detail = CondominiumSerializer(source='condominium', read_only=True)
 
     class Meta:
         model = Apartment
-        fields = ('id', 'number', 'block', 'tread','residents', 'visitors', 'entry_date', 'occupation', 'registered_by')
+        fields = (
+            'id', 'number', 'block', 'tread', 'entry_date', 'exit_date',
+            'occupation', 'condominium', 'condominium_detail'
+        )
 
 class VisitSerializer(serializers.ModelSerializer):
     # O campo 'visitor' é um campo de chave estrangeira que permite selecionar um visitante
-    visitor = PersonSerializer()
+    visitor = VisitorSerializer(read_only=True)
     # O campo 'apartment' é um campo de chave estrangeira que permite selecionar um apartamento
-    apartment = ApartmentSerializer()
+    apartment = ApartmentSerializer(read_only=True)
     # O campo 'registered_by' é somente leitura, pois é preenchido automaticamente com o usuário autenticado
     registered_by = serializers.PrimaryKeyRelatedField(read_only=True)
 
@@ -88,17 +83,23 @@ class VisitSerializer(serializers.ModelSerializer):
 class VehicleSerializer(serializers.ModelSerializer):
     # O campo 'registered_by' é somente leitura, pois é preenchido automaticamente com o usuário autenticado
     registered_by = serializers.PrimaryKeyRelatedField(read_only=True)
+    condominium = CondominiumSerializer(read_only=True)
+    condominium_id = serializers.PrimaryKeyRelatedField(
+        queryset=Condominium.objects.all(),
+        source='condominium',
+        write_only=True
+    )
 
     class Meta:
         model = Vehicle
-        fields = ('id', 'registered_by', 'plate', 'model', 'color', 'owner')
+        fields = ('id', 'registered_by', 'plate', 'model', 'color', 'garage', 'owner', 'condominium', 'condominium_id')
 
 
-class OrdersSerializer(serializers.ModelSerializer):
+class OrderSerializer(serializers.ModelSerializer):
     # O campo 'registered_by' é somente leitura, pois é preenchido automaticamente com o usuário autenticado
     registered_by = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
-        model = Orders
-        fields = ('id', 'order_code', 'status', 'signature_image', 'registered_by',)
+        model = Order
+        fields = ('id', 'order_code', 'status', 'signature_image', 'registered_by', 'owner')
         read_only_fields = ('signature_image',)
