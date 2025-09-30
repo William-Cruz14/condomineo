@@ -159,26 +159,20 @@ CORS_ALLOW_ALL_ORIGINS = True
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 # Se modo DEBUG for True, use o banco de dados local
-if DEBUG:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': config('DB_NAME'),
-            'USER': config('DB_USER'),
-            'PASSWORD': config('DB_PASSWORD'),
-            'HOST': config('DB_HOST', default='localhost'),
-            'PORT': '5432',
-        }
+IS_DOCKER = config('IS_DOCKER', default=False, cast=bool)
+
+DB_HOST = 'db' if IS_DOCKER else 'localhost'
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST', default=DB_HOST),
+        'PORT': config('DB_PORT', default='5432'),
     }
-# Se modo DEBUG for False, use o banco de dados remoto
-else:
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=config('DATABASE_URL'),
-            conn_max_age=600,
-            conn_health_checks=True
-        )
-    }
+}
 
 
 # Password validation
