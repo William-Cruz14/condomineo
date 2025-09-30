@@ -3,7 +3,7 @@ services:
   # Serviço do banco de dados PostgreSQL
   db:
     image: postgres:17-alpine
-    container_name: condomineo_db
+    container_name: porttusmart_db
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
