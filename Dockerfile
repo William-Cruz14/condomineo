@@ -5,7 +5,7 @@ LABEL authors="william"
 
 # Working directory
 WORKDIR /app
-ENV PYTHONNUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 # Copy requirements file and install dependencies
 COPY requirements.txt .
@@ -18,4 +18,4 @@ COPY . .
 EXPOSE 8000
 
 # Command to start the server
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
