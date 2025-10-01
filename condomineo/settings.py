@@ -28,6 +28,7 @@ SECRET_KEY = config('SECRET')
 DEBUG = config('DEBUG', default=True, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOST', default='*').split(',')
+CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='*')
 
 # Application definition
 INSTALLED_APPS = [
@@ -160,14 +161,10 @@ CORS_ALLOW_ALL_ORIGINS = True
 # Se modo DEBUG for True, use o banco de dados local
 if DEBUG:
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': config('DB_NAME'),
-            'USER': config('DB_USER'),
-            'PASSWORD': config('DB_PASSWORD'),
-            'HOST': config('DB_HOST'),
-            'PORT': config('DB_PORT'),
-        }
+        'default': dj_database_url.config(
+            default=config('DATABASE_URL'),
+            conn_max_age=600,
+        )
     }
 else:
     DATABASES = {
