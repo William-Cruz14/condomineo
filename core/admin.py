@@ -5,15 +5,23 @@ from unfold.admin import ModelAdmin
 from unfold.forms import AdminPasswordChangeForm, UserCreationForm, UserChangeForm
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (Apartment, Visitor, Reservation, Finance, Vehicle, Order, Visit, Condominium)
-from .forms import VisitorForm, ReservationForm, FinanceForm, VehicleForm, ApartmentForm, OrderForm
+from .forms import VisitorForm, ReservationForm, FinanceForm, VehicleForm, ApartmentForm, OrderForm, CondominiumForm
 
 admin.site.unregister(Group)
 
 @admin.register(Condominium)
 class CondominiumAdmin(ModelAdmin):
-    list_display = ('name', 'road', 'number','complement', 'cnpj', 'created_at')
+    model = Condominium
+    form = CondominiumForm
+    list_display = ('name', 'cnpj', 'created_at')
     search_fields = ('name', 'number', 'cnpj')
     ordering = ('name',)
+    readonly_fields = ('created_at', 'code_condominium', 'created_by')
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
 
 # Cadastro do modelo 'Apartamento' no site de administração, para que os síndicos e administradores possam gerenciar
 # os Apartamentos.
@@ -21,8 +29,9 @@ class CondominiumAdmin(ModelAdmin):
 class ApartmentAdmin(ModelAdmin):
     model = Apartment
     form = ApartmentForm
-    list_display = ('id', 'number', 'block', 'tread', 'occupation', 'condominium','id')
+    list_display = ('id', 'number', 'block', 'tread', 'occupation', 'condominium')
     search_fields = ('number', 'block', 'condominium__name')
+    readonly_fields = ('exit_date', 'entry_date')
     list_filter = ('condominium', 'occupation')
 
     def get_queryset(self, request):

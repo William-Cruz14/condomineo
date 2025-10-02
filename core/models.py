@@ -45,7 +45,7 @@ class Visitor(models.Model):
     name = models.CharField(max_length=255, verbose_name='Nome do Visitante')
     cpf = models.CharField(
         max_length=11,
-        verbose_name='Documento do Visitante',
+        verbose_name='Cadastro de Pessoa Física (CPF)',
         help_text='Apenas números, sem pontos ou traços.'
     )
     telephone = models.CharField(max_length=11, blank=True, null=True, verbose_name='Telefone do Visitante')

@@ -1,5 +1,11 @@
 from django import forms
-from .models import Visitor, Reservation, Finance, Vehicle, Apartment, Order
+from .models import Visitor, Reservation, Finance, Vehicle, Apartment, Order, Condominium
+
+
+class CondominiumForm(forms.ModelForm):
+    class Meta:
+        model = Condominium
+        fields = ['name', 'cnpj', 'road', 'number', 'complement' ]
 
 
 # Definindo o formulário de reserva
