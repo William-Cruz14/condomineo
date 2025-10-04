@@ -102,16 +102,24 @@ class Apartment(models.Model):
     def __str__(self):
         return f'Apartamento {self.number} - Bloco {self.block} - Piso {self.tread} ({self.condominium.name})'
 
-    def clean(self):
+    def clean(self, *args, **kwargs):
         # usa ValidationError do Django
+        super().clean()
+
         if self.exit_date and self.entry_date and self.exit_date <= self.entry_date:
             raise ValidationError('A data de saída deve ser posterior à data de entrada.')
 
         if not self.number or not self.block or self.tread is None:
             raise ValidationError('Todos os campos do apartamento são obrigatórios.')
 
-        if Apartment.objects.filter(number=self.number, block=self.block, tread=self.tread, condominium=self.condominium).exclude(pk=self.pk).exists():
+        if Apartment.objects.filter(
+                number=self.number, block=self.block,
+                tread=self.tread, condominium=self.condominium).exclude(pk=self.pk).exists():
             raise ValidationError('Já existe um apartamento com este número, bloco e piso.')
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 # Definindo o modelo de Visita
 class Visit(models.Model):
@@ -184,10 +192,6 @@ class Reservation(models.Model):
     start_time = models.DateTimeField(verbose_name='Data e Hora Início')
     end_time = models.DateTimeField(verbose_name='Data e Hora de Fim', blank=True, null=True)
 
-    @property
-    def condominium(self):
-        return self.resident.apartment.condominium if self.resident.apartment else None
-
     # Validando os dados antes de salvar
     def clean(self, *args, **kwargs):
         super().clean()
@@ -201,20 +205,25 @@ class Reservation(models.Model):
 
         # evita conflitos entre condomínios diferentes; filtra pela propriedade condominium do residente
         condominium = None
-        if getattr(self, 'resident', None) and getattr(self.resident, 'apartment', None):
-            condominium = self.resident.apartment.condominium
+        if getattr(self, 'resident', None):
+            condominium = self.resident.condominium
+            print(f'Condomínio do residente: {condominium.name}')
 
         conflicting_reservations = Reservation.objects.filter(
             space=self.space,
             start_time__lt=self.end_time,
-            end_time__gt=self.start_time
+            end_time__gt=self.start_time,
         ).exclude(pk=self.pk)
 
         if condominium:
-            conflicting_reservations = conflicting_reservations.filter(resident__apartment__condominium=condominium)
+            conflicting_reservations = conflicting_reservations.filter(resident__condominium=condominium)
 
         if conflicting_reservations.exists():
             raise ValidationError('Já existe uma reserva para este espaço nesse horário.')
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 
     class Meta:
@@ -223,6 +232,8 @@ class Reservation(models.Model):
 
     def __str__(self):
         return f'Reserva - {self.space} - {self.resident.name} - {self.start_time} {self.end_time}'
+
+
 
 
 # Definindo o modelo de Comunicação

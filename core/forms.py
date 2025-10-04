@@ -1,5 +1,8 @@
 from django import forms
-from .models import Visitor, Reservation, Finance, Vehicle, Apartment, Order, Condominium
+from .models import (
+    Visitor, Reservation, Finance, Vehicle, Apartment,
+    Order, Condominium, Notice, Communication
+)
 
 
 class CondominiumForm(forms.ModelForm):
@@ -24,20 +27,11 @@ class ApartmentForm(forms.ModelForm):
         model = Apartment
         fields = ['condominium', 'number', 'block', 'tread', 'occupation', 'exit_date']
 
-    """
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None) 
-        super().__init__(*args, **kwargs)
-    """
 # Definindo o formulário de visitante
 class VisitorForm(forms.ModelForm):
     class Meta:
         model = Visitor
         fields = ['condominium', 'name', 'cpf', 'telephone']
-
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
 
 class FinanceForm(forms.ModelForm):
     class Meta:
@@ -45,18 +39,11 @@ class FinanceForm(forms.ModelForm):
         fields = ['condominium', 'value', 'description', 'document']
 
 
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
-
 class VehicleForm(forms.ModelForm):
     class Meta:
         model = Vehicle
         fields = ['condominium', 'plate', 'model', 'color', 'garage', 'owner']
 
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
 
 
 class OrderForm(forms.ModelForm):
@@ -64,6 +51,14 @@ class OrderForm(forms.ModelForm):
         model = Order
         fields = ['order_code','status', 'owner', 'signature_image']
 
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
+
+class NoticeForm(forms.ModelForm):
+    class Meta:
+        model = Notice
+        fields = ['title', 'content', 'condominium', 'file_complement']
+
+
+class CommunicationForm(forms.ModelForm):
+    class Meta:
+        model = Communication
+        fields = '__all__'

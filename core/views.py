@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import DjangoModelPermissions
@@ -64,8 +65,10 @@ class ReservationViewSet(viewsets.ModelViewSet):
         return query_base.filter(resident=user)
 
     def perform_create(self, serializer):
-        serializer.save(resident=self.request.user)
-
+        try:
+            serializer.save(resident=self.request.user)
+        except ValidationError as e:
+            raise PermissionDenied(e.messages)
 
 class ApartmentViewSet(viewsets.ModelViewSet):
     permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
@@ -90,10 +93,14 @@ class ApartmentViewSet(viewsets.ModelViewSet):
         return query_base.filter(residents=user)
 
     def perform_create(self, serializer):
-        if self.request.user.user_type != 'admin':
-            raise PermissionDenied("Apenas administradores podem criar apartamentos.")
-        else:
-            serializer.save()
+        try:
+            if self.request.user.user_type != 'admin':
+                raise PermissionDenied("Apenas administradores podem criar apartamentos.")
+            else:
+                serializer.save()
+
+        except ValidationError as e:
+            raise PermissionDenied(e.messages)
 
 class VisitViewSet(viewsets.ModelViewSet):
     permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]

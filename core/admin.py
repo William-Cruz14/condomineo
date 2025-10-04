@@ -4,8 +4,12 @@ from django.contrib.auth.models import Group
 from unfold.admin import ModelAdmin
 from unfold.forms import AdminPasswordChangeForm, UserCreationForm, UserChangeForm
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import (Apartment, Visitor, Reservation, Finance, Vehicle, Order, Visit, Condominium)
-from .forms import VisitorForm, ReservationForm, FinanceForm, VehicleForm, ApartmentForm, OrderForm, CondominiumForm
+from .models import (Apartment, Visitor, Reservation, Finance, Vehicle, Order, Visit, Condominium, Notice,
+                     Communication)
+from .forms import (
+    VisitorForm, ReservationForm, FinanceForm, VehicleForm, ApartmentForm,
+    OrderForm, CondominiumForm, NoticeForm, CommunicationForm
+)
 
 admin.site.unregister(Group)
 
@@ -17,6 +21,21 @@ class CondominiumAdmin(ModelAdmin):
     search_fields = ('name', 'number', 'cnpj')
     ordering = ('name',)
     readonly_fields = ('created_at', 'code_condominium', 'created_by')
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(Notice)
+class NoticeAdmin(ModelAdmin):
+    form = NoticeForm
+    list_display = ('title', 'created_at', 'condominium')
+    search_fields = ('title', 'content', 'condominium__name')
+    list_filter = ('condominium',)
+    ordering = ('-created_at',)
+    readonly_fields = ('created_at', 'author')
 
     def save_model(self, request, obj, form, change):
         if not change:
@@ -151,3 +170,18 @@ class VisitAdmin(ModelAdmin):
     list_display = ('visitor', 'apartment', 'entry_date', 'exit_date')
     search_fields = ('visitor__name', 'apartment__number',)
     ordering = ('-apartment',)
+
+@admin.register(Communication)
+class CommunicationAdmin(ModelAdmin):
+
+    form = CommunicationForm
+    list_display = ('title', 'created_at', 'condominium')
+    list_filter = ('condominium',)
+    search_fields = ('title', 'condominium__name')
+    ordering = ('-created_at',)
+    readonly_fields = ('created_at', 'sender')
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.sender = request.user
+        super().save_model(request, obj, form, change)
