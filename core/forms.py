@@ -8,7 +8,7 @@ from .models import (
 class CondominiumForm(forms.ModelForm):
     class Meta:
         model = Condominium
-        fields = ['name', 'cnpj', 'road', 'number', 'complement' ]
+        fields = ['name', 'cnpj', 'address' ]
 
 
 # Definindo o formulário de reserva
