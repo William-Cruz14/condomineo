@@ -1,7 +1,14 @@
 from rest_framework import serializers
-from .models import Visitor, Reservation, Apartment, Finance, Vehicle, Order, Visit, Condominium
+from .models import Visitor, Reservation, Apartment, Finance, Vehicle, Order, Visit, Condominium, Address
+
+
+class AdressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = '__all__'
 
 class CondominiumSerializer(serializers.ModelSerializer):
+    address = AdressSerializer()
     class Meta:
         model = Condominium
         fields = (
@@ -14,6 +21,13 @@ class CondominiumSerializer(serializers.ModelSerializer):
             'created_at': {'read_only': True},
             'created_by': {'read_only': True},
         }
+
+    def create(self, validated_data):
+        address_data = validated_data.pop('address')
+        address = Address.objects.create(**address_data)
+        condominium = Condominium.objects.create(address=address, **validated_data)
+        return condominium
+
 
 
 class VisitorSerializer(serializers.ModelSerializer):
