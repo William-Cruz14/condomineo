@@ -8,9 +8,12 @@ from users.models import Person
 class Condominium(models.Model):
     name = models.CharField(max_length=255, verbose_name='Nome do Condomínio')
     cnpj = models.CharField(max_length=20, unique=True, verbose_name='Cadastro Nacional da Pessoa Jurídica (CNPJ)')
-    road = models.CharField(max_length=100, verbose_name='Rua')
-    number = models.IntegerField(verbose_name='Número')
-    complement = models.CharField(max_length=10, blank=True, null=True, verbose_name='Complemento')
+    address = models.OneToOneField(
+        'Address',
+        on_delete=models.CASCADE,
+        related_name='condominium',
+        verbose_name='Endereço'
+    )
     code_condominium = models.CharField(max_length=20, unique=True, verbose_name='Código do Condomínio')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Data de Criação')
     created_by = models.ForeignKey(
@@ -32,6 +35,22 @@ class Condominium(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.code_condominium})"
+
+class Address(models.Model):
+    street = models.CharField(max_length=255, verbose_name='Rua')
+    number = models.CharField(max_length=20, verbose_name='Número')
+    complement = models.CharField(max_length=100, blank=True, null=True, verbose_name='Complemento')
+    neighborhood = models.CharField(max_length=100, verbose_name='Bairro')
+    city = models.CharField(max_length=100, verbose_name='Cidade')
+    state = models.CharField(max_length=100, verbose_name='Estado')
+    zip_code = models.CharField(max_length=20, verbose_name='CEP')
+
+    class Meta:
+        verbose_name = 'Endereço'
+        verbose_name_plural = 'Endereços'
+
+    def __str__(self):
+        return f'{self.street}, {self.number} - {self.city}/{self.state}'
 
 # Definindo o modelo de Visitante
 class Visitor(models.Model):
