@@ -5,7 +5,7 @@ class CondominiumSerializer(serializers.ModelSerializer):
     class Meta:
         model = Condominium
         fields = (
-            'id', 'name', 'road', 'number', 'complement', 'cnpj',
+            'id', 'name', 'address', 'cnpj',
             'code_condominium', 'created_at', 'created_by'
         )
 
