@@ -5,7 +5,7 @@ from unfold.admin import ModelAdmin
 from unfold.forms import AdminPasswordChangeForm, UserCreationForm, UserChangeForm
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (Apartment, Visitor, Reservation, Finance, Vehicle, Order, Visit, Condominium, Notice,
-                     Communication)
+                     Communication, Address)
 from .forms import (
     VisitorForm, ReservationForm, FinanceForm, VehicleForm, ApartmentForm,
     OrderForm, CondominiumForm, NoticeForm, CommunicationForm
@@ -18,7 +18,7 @@ class CondominiumAdmin(ModelAdmin):
     model = Condominium
     form = CondominiumForm
     list_display = ('name', 'cnpj', 'created_at')
-    search_fields = ('name', 'number', 'cnpj')
+    search_fields = ('name', 'cnpj')
     ordering = ('name',)
     readonly_fields = ('created_at', 'code_condominium', 'created_by')
 
@@ -26,6 +26,14 @@ class CondominiumAdmin(ModelAdmin):
         if not change:
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(Address)
+class AddressAdmin(ModelAdmin):
+    model = Address
+    list_display = ('street', 'number', 'city', 'state', 'zip_code')
+    search_fields = ('street', 'city', 'state', 'zip_code')
+    ordering = ('city', 'street')
 
 
 @admin.register(Notice)
