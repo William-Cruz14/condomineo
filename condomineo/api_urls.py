@@ -1,11 +1,11 @@
 from django.urls import path, include
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
 from drf_spectacular.views import (
     SpectacularAPIView, SpectacularSwaggerView,
     SpectacularRedocView
+)
+from dj_rest_auth.views import (
+    LoginView, LogoutView, PasswordChangeView,
+    PasswordResetView, PasswordResetConfirmView
 )
 urlpatterns = [
     # Schema OpenAPI
@@ -15,8 +15,11 @@ urlpatterns = [
     # Redoc UI
     path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 
-    path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/login/', LoginView.as_view(), name='rest_login'),
+    path('auth/logout/', LogoutView.as_view(), name='rest_logout'),
+    path('auth/password/change/', PasswordChangeView.as_view(), name='rest_password_change'),
+    path('auth/password/reset/', PasswordResetView.as_view(), name='rest_password_reset'),
+    path('auth/password/reset/confirm/', PasswordResetConfirmView.as_view(), name='rest_password_reset_confirm'),
     path('core/', include('core.urls')),
     path('users/', include('users.urls')),
 ]

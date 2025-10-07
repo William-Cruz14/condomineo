@@ -35,6 +35,9 @@ INSTALLED_APPS = [
     'unfold',
     'unfold.contrib.forms',
     'rest_framework_simplejwt',
+    'dj_rest_auth',
+    'allauth',
+    'allauth.account',
     'corsheaders',
     'django.contrib.auth',
     'django.contrib.admin',
@@ -49,6 +52,7 @@ INSTALLED_APPS = [
     'stdimage',
     'django_filters',
     'rest_framework',
+    'rest_framework.authtoken',
 
 ]
 
@@ -92,7 +96,13 @@ UNFOLD = {
     },
 }
 
+REST_AUTH = {
+    'USE_JWT': True,
+}
 
+# Configurações do django-allauth
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -127,6 +137,7 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',

@@ -2,7 +2,10 @@ from django.db.models.signals import post_migrate, post_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q
 from users.models import Person
+from core.models import Visitor, Visit, Reservation, Apartment, Finance, Vehicle, Order, Notice
 
 User = get_user_model()
 
@@ -11,48 +14,89 @@ def create_user_group_and_permissions(sender, **kwargs):
     """
     Cria grupos padrão e associa permissões após as migrations.
     """
-    default_groups = {
-        'Moradores': [
-            'view_visitor', 'add_visitor', 'change_visitor', 'delete_visitor',
-            'view_visit', 'add_visit', 'change_visit', 'delete_visit',
-            'view_reservation', 'add_reservation', 'change_reservation', 'delete_reservation',
-            'view_message', 'add_message', 'change_message', 'delete_message',
-            'view_apartment',
-            'view_finance',
-            'view_vehicle',
-            'view_order',
-        ],
-        'Funcionários': [
-            'view_visitor', 'add_visitor', 'change_visitor', 'delete_visitor',
-            'view_visit', 'add_visit', 'change_visit', 'delete_visit',
-            'view_reservation', 'add_reservation', 'change_reservation', 'delete_reservation',
-            'view_message', 'add_message', 'change_message', 'delete_message',
-            'view_apartment', 'add_apartment', 'change_apartment',
-            'view_finance', 'add_finance', 'change_finance',
-            'view_vehicle', 'add_vehicle', 'change_vehicle',
-            'view_order', 'add_order', 'change_order'
-        ],
-        'Administração': [
-            'view_visitor', 'add_visitor', 'change_visitor', 'delete_visitor',
-            'view_visit', 'add_visit', 'change_visit', 'delete_visit',
-            'view_reservation', 'add_reservation', 'change_reservation', 'delete_reservation',
-            'view_message', 'add_message', 'change_message', 'delete_message',
-            'view_apartment', 'add_apartment', 'change_apartment', 'delete_apartment',
-            'view_finance', 'add_finance', 'change_finance', 'delete_finance',
-            'view_vehicle', 'add_vehicle', 'change_vehicle', 'delete_vehicle',
-            'view_order', 'add_order', 'change_order', 'delete_order',
-        ],
+    # Apenas processar quando o app relacionado termina suas migrações
+    app_label = getattr(sender, 'label', '')
+    if app_label not in ['users', 'core', 'auth']:
+        return
+
+    # Criar os grupos se não existirem
+    morador_group, _ = Group.objects.get_or_create(name='Moradores')
+    funcionario_group, _ = Group.objects.get_or_create(name='Funcionários')
+    admin_group, _ = Group.objects.get_or_create(name='Administração')
+
+    # Limpar permissões existentes para evitar duplicações
+    morador_group.permissions.clear()
+    funcionario_group.permissions.clear()
+    admin_group.permissions.clear()
+
+    # Obter os modelos que precisamos
+    models_map = {
+        'visitor': Visitor,
+        'visit': Visit,
+        'reservation': Reservation,
+        'apartment': Apartment,
+        'finance': Finance,
+        'vehicle': Vehicle,
+        'order': Order,
+        'notice': Notice,
     }
 
-    for group_name, permissions in default_groups.items():
-        group, _ = Group.objects.get_or_create(name=group_name)
+    # Definir as permissões por grupo
+    moradores_perms = {
+        'visitor': ['view', 'add', 'change', 'delete'],
+        'visit': ['view', 'add', 'change', 'delete'],
+        'reservation': ['view', 'add', 'change', 'delete'],
+        'apartment': ['view'],
+        'finance': ['view'],
+        'vehicle': ['view'],
+        'order': ['view'],
+        'notice': ['view'],
+    }
 
-        for codename in permissions:
-            try:
-                permission = Permission.objects.get(codename=codename)
-                group.permissions.add(permission)
-            except Permission.DoesNotExist:
-                print(f'Permissão "{codename}" não encontrada.')
+    funcionarios_perms = {
+        'visitor': ['view', 'add', 'change', 'delete'],
+        'visit': ['view', 'add', 'change', 'delete'],
+        'reservation': ['view', 'add', 'change', 'delete'],
+        'apartment': ['view', 'add', 'change'],
+        'finance': ['view', 'add', 'change'],
+        'vehicle': ['view', 'add', 'change'],
+        'order': ['view', 'add', 'change'],
+        'notice': ['view', 'add', 'change'],
+    }
+
+    administracao_perms = {
+        'visitor': ['view', 'add', 'change', 'delete'],
+        'visit': ['view', 'add', 'change', 'delete'],
+        'reservation': ['view', 'add', 'change', 'delete'],
+        'apartment': ['view', 'add', 'change', 'delete'],
+        'finance': ['view', 'add', 'change', 'delete'],
+        'vehicle': ['view', 'add', 'change', 'delete'],
+        'order': ['view', 'add', 'change', 'delete'],
+        'notice': ['view', 'add', 'change', 'delete'],
+    }
+
+    # Função para adicionar permissões a um grupo
+    def add_permissions_to_group(group, perms_dict):
+        for model_name, actions in perms_dict.items():
+            if model_name not in models_map:
+                continue
+
+            model = models_map[model_name]
+            content_type = ContentType.objects.get_for_model(model)
+
+            # Construir uma única consulta para obter todas as permissões de uma vez
+            q_objects = Q()
+            for action in actions:
+                q_objects |= Q(codename=f"{action}_{model_name}")
+
+            # Obter permissões com uma única consulta
+            permissions = Permission.objects.filter(content_type=content_type).filter(q_objects)
+            group.permissions.add(*permissions)
+
+    # Aplicar permissões a cada grupo
+    add_permissions_to_group(morador_group, moradores_perms)
+    add_permissions_to_group(funcionario_group, funcionarios_perms)
+    add_permissions_to_group(admin_group, administracao_perms)
 
     print("Grupos e permissões criados com sucesso.")
 
@@ -69,7 +113,5 @@ def assign_user_to_group(sender, instance, created, **kwargs):
                 group = Group.objects.get(name='Funcionários')
 
             instance.groups.add(group)
-
-            print(f'Usuário "{instance.name}" adicionado ao grupo "{group.name}".')
         except Group.DoesNotExist:
             print(f'Grupo para o tipo de usuário "{instance.user_type}" não encontrado.')

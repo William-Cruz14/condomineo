@@ -95,3 +95,4 @@ class PersonView(ModelViewSet):
         serializer = self.get_serializer(profile, many=True)
 
         return Response(serializer.data)
+
