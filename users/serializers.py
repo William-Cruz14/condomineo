@@ -7,7 +7,7 @@ from core.serializers import ApartmentSerializer
 
 class PersonSerializer(serializers.ModelSerializer):
 
-    apartment_number = serializers.CharField(write_only=True, required=False)
+    apartment_number = serializers.IntegerField(write_only=True, required=False)
     apartment_block = serializers.CharField(write_only=True, required=False)
     apartment = ApartmentSerializer(read_only=True)
     condominium = serializers.SlugRelatedField(queryset=Condominium.objects.all(), slug_field='code_condominium')
@@ -20,7 +20,10 @@ class PersonSerializer(serializers.ModelSerializer):
             'id', 'name', 'email', 'cpf', 'password', 'telephone', 'user_type', 'apartment_number',
             'apartment_block','apartment', 'position', 'condominium', 'managed_condominiums', 'registered_by'
         )
-        extra_kwargs = {'password': {'write_only': True}}
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'registered_by': {'read_only': True},
+        }
 
     def validate(self, data):
         # Adicione validações personalizadas aqui, se necessário
@@ -63,10 +66,15 @@ class PersonSerializer(serializers.ModelSerializer):
                 )
                 print(f"Apartamento {'criado' if created else 'encontrado'}: {apt_instance}")
 
-                # Associar o apartamento ao usuário
+                # Atualizando o status do apartamento para 'ocupado' se foi criado agora
+                if created:
+                    apt_instance.occupation = 'occupied'
+                    apt_instance.save()
+
                 user.apartment = apt_instance
                 user.save()
                 user.refresh_from_db()
+
             except Apartment.DoesNotExist:
                 raise serializers.ValidationError(
                     f"Apartamento não encontrado com número {apartment_number}, bloco {apartment_block} no condomínio especificado.")

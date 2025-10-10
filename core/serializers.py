@@ -76,8 +76,8 @@ class ApartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Apartment
         fields = (
-            'id', 'number', 'block', 'tread', 'entry_date', 'exit_date',
-            'occupation', 'condominium', 'condominium_detail'
+            'id', 'number', 'block', 'tread', 'occupation',
+            'entry_date', 'exit_date', 'condominium', 'condominium_detail'
         )
 
 

@@ -63,12 +63,12 @@ UNFOLD = {
             "light": lambda request: "/static/logo.png",  # light mode
             "dark": lambda request: "/static/logo.png",  # dark mode
         },
-    'APP_NAME': 'CondoMineo',
-    'APP_DESCRIPTION': 'CondoMineo é um aplicativo para gestão de condomínios, facilitando a comunicação entre moradores e administração.',
+    'APP_NAME': 'PorttuSmart',
+    'APP_DESCRIPTION': 'PorttuSmart é um aplicativo para gestão de condomínios, facilitando a comunicação entre moradores e administração.',
     'APP_VERSION': '1.0.0',
-    'APP_AUTHOR': 'CondoMineo Team',
-    'SITE_TITLE': 'Condomineo',
-    'SITE_HEADER': 'Condomineo',
+    'APP_AUTHOR': 'PorttuSmart Team',
+    'SITE_TITLE': 'PorttuSmart - Gestão de Condomínios',
+    'SITE_HEADER': 'PorttuSmart',
     'SITE_SUBHEADER': 'Gestão de Condomínios',
     'COLORS': {
         'primary': {

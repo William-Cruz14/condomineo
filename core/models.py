@@ -115,7 +115,7 @@ class Apartment(models.Model):
         verbose_name = 'Apartamento'
         verbose_name_plural = 'Apartamentos'
         constraints = [
-            models.UniqueConstraint(fields=['number', 'block', 'tread', 'condominium'], name='unique_apartment_per_condo')
+            models.UniqueConstraint(fields=['number', 'block', 'condominium'], name='unique_apartment_per_condo')
         ]
 
     def __str__(self):
@@ -128,8 +128,8 @@ class Apartment(models.Model):
         if self.exit_date and self.entry_date and self.exit_date <= self.entry_date:
             raise ValidationError('A data de saída deve ser posterior à data de entrada.')
 
-        if not self.number or not self.block or self.tread is None:
-            raise ValidationError('Todos os campos do apartamento são obrigatórios.')
+        if not self.number or not self.block or not self.condominium:
+            raise ValidationError('O número, bloco e condomínio são obrigatórios.')
 
         if Apartment.objects.filter(
                 number=self.number, block=self.block,
