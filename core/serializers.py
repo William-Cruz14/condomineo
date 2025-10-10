@@ -2,13 +2,13 @@ from rest_framework import serializers
 from .models import Visitor, Reservation, Apartment, Finance, Vehicle, Order, Visit, Condominium, Address
 
 
-class AdressSerializer(serializers.ModelSerializer):
+class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
         fields = '__all__'
 
 class CondominiumSerializer(serializers.ModelSerializer):
-    address = AdressSerializer()
+    address = AddressSerializer()
     class Meta:
         model = Condominium
         fields = (
@@ -27,7 +27,6 @@ class CondominiumSerializer(serializers.ModelSerializer):
         address = Address.objects.create(**address_data)
         condominium = Condominium.objects.create(address=address, **validated_data)
         return condominium
-
 
 
 class VisitorSerializer(serializers.ModelSerializer):
@@ -71,7 +70,7 @@ class FinanceSerializer(serializers.ModelSerializer):
         fields = ('id', 'creator', 'value', 'date', 'description', 'document', 'condominium', 'condominium_id')
 
 class ApartmentSerializer(serializers.ModelSerializer):
-    condominium = serializers.PrimaryKeyRelatedField(queryset=Condominium.objects.all())
+    condominium = serializers.SlugRelatedField(queryset=Condominium.objects.all(), slug_field='code_condominium')
     condominium_detail = CondominiumSerializer(source='condominium', read_only=True)
 
     class Meta:
@@ -80,6 +79,7 @@ class ApartmentSerializer(serializers.ModelSerializer):
             'id', 'number', 'block', 'tread', 'entry_date', 'exit_date',
             'occupation', 'condominium', 'condominium_detail'
         )
+
 
 class VisitSerializer(serializers.ModelSerializer):
     # O campo 'visitor' é um campo de chave estrangeira que permite selecionar um visitante

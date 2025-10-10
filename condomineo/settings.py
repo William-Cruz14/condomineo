@@ -56,6 +56,8 @@ INSTALLED_APPS = [
 
 ]
 
+SITE_ID = 1
+
 UNFOLD = {
     "SITE_LOGO": {
             "light": lambda request: "/static/logo.png",  # light mode
@@ -99,6 +101,8 @@ UNFOLD = {
 REST_AUTH = {
     'USE_JWT': True,
 }
+
+
 
 # Configurações do django-allauth
 ACCOUNT_LOGIN_METHODS = {'email'}
@@ -242,6 +246,7 @@ USE_TZ = True
 EMAIL_BACKEND = config('EMAIL_BACKEND')
 EMAIL_HOST = config('EMAIL_HOST')
 EMAIL_PORT = config('EMAIL_PORT')
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 

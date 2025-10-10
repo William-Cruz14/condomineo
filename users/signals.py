@@ -46,7 +46,7 @@ def create_user_group_and_permissions(sender, **kwargs):
         'visitor': ['view', 'add', 'change', 'delete'],
         'visit': ['view', 'add', 'change', 'delete'],
         'reservation': ['view', 'add', 'change', 'delete'],
-        'apartment': ['view'],
+        'apartment': ['view', 'add'],
         'finance': ['view'],
         'vehicle': ['view'],
         'order': ['view'],

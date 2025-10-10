@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Email</title>
+</head>
+<body>
+    <!-- app/templates/emails/new_user_email.html -->
+    <div style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 20px;">
+      <div style="max-width: 600px; margin: auto; background-color: #fff; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h2 style="text-align: center; color: #2c3e50;">🏢 Novo cadastro no seu condomínio</h2>
+        <p>Olá, administrador(a)!</p>
+        <p>Um novo usuário foi cadastrado:</p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+          <tr><td><strong>Nome:</strong></td><td>{{ name }}</td></tr>
+          <tr><td><strong>Email:</strong></td><td>{{ email }}</td></tr>
+          <tr><td><strong>Telefone:</strong></td><td>{{ telephone }}</td></tr>
+          <tr><td><strong>Tipo de Usuário:</strong></td><td>{{ user_type }}</td></tr>
+        </table>
+        <div style="text-align: center; margin-top: 30px;">
+          <a href="#" style="background-color: #3498db; color: #fff; padding: 12px 25px; border-radius: 8px; text-decoration: none;">Ver detalhes no sistema</a>
+        </div>
+      </div>
+    </div>
+
+</body>
+</html>

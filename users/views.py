@@ -4,8 +4,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.viewsets import ModelViewSet
 from django.core.mail import send_mail
+from django.template.loader import render_to_string
 from decouple import config
-from core.models import Apartment
+from core.models import Apartment, Condominium
 from .models import Person
 from .serializers import PersonSerializer
 
@@ -42,34 +43,30 @@ class PersonView(ModelViewSet):
             return Response({"Aviso": "Criação de administradores não é permitida para todos.."},
                             status=status.HTTP_403_FORBIDDEN)
 
-        # Se o tipo de usuário for 'resident' e um apartamento for fornecido, marca o apartamento como 'ocupado'
-        if request.data.get('user_type') == 'resident' and request.data.get('apartment'):
-            apartment_id = request.data.get('apartment')
-            try:
-                apartment = Apartment.objects.get(id=apartment_id)
-                apartment.occupation = 'occupied'
-                apartment.save()
-            except Apartment.DoesNotExist:
-                return Response({"error": "Apartamento não encontrado."},
-                                status=status.HTTP_400_BAD_REQUEST)
-
-
         response = super().create(request, *args, **kwargs)
+        condominium_id = None
 
         if response.status_code == 201:
             new_user_data = response.data
-            apartment_id = new_user_data.get('apartment')
-            print(f"Apartamento ID: {apartment_id}")
-            condominium_id = None
+            if new_user_data.get('user_type') == 'resident':
+                apartment = new_user_data.get('apartment')
+                print(apartment)
+                apartment_id = apartment.get('id') if apartment else None
+                print(f"Apartamento ID: {apartment_id}.")
 
+                if apartment_id:
+                    try:
+                        apartment = Apartment.objects.get(id=apartment_id)
+                        condominium_id = apartment.condominium.id
+                        print(f"Condominio ID: {condominium_id}")
+                    except Apartment.DoesNotExist:
+                        print("Apartamento não encontrado.")
 
-            if apartment_id:
-                try:
-                    apartment = Apartment.objects.get(id=apartment_id)
-                    condominium_id = apartment.condominium.id
-                    print(f"Condominio ID: {condominium_id}")
-                except Apartment.DoesNotExist:
-                    pass
+            else:
+                condominium_code = new_user_data.get('condominium')
+                print(condominium_code)
+                condominium_id = Condominium.objects.get(code_condominium=condominium_code).id if condominium_code else None
+                print(f"Condominio ID (funcionário): {condominium_id}")
 
             if condominium_id:
                 print("Estou enviando email")
@@ -79,12 +76,28 @@ class PersonView(ModelViewSet):
                     user_type='admin'
                 )
 
-                subject = "Cadastro Realizado"
-                message = f"Olá, o usuário {new_user_data.get('name')} acaba de ser cadastrado.."
+                context = {
+                    'name': new_user_data.get('name'),
+                    'email': new_user_data.get('email'),
+                    'telephone': new_user_data.get('telephone'),
+                    'user_type': "Morador" if new_user_data.get('user_type') == 'resident' else "Funcionário",
+                }
+
+                html_message = render_to_string('emails/new_user_email.html', context)
+                message = f"Olá, o usuário {context['name']} acaba de ser cadastrado no sistema."
+                print(f"Admins encontrados: {admins.count()}")
+
+                subject = "🎉 Novo cadastro realizado!"
                 from_email = config('EMAIL_HOST_USER')
                 recipient_list = [admin.email for admin in admins]
 
-                send_mail(subject, message, from_email, recipient_list)
+                send_mail(
+                    subject,
+                    message,
+                    from_email,
+                    recipient_list,
+                    html_message=html_message,
+                )
 
         return response
 

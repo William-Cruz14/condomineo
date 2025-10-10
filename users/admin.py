@@ -13,15 +13,7 @@ class PersonAdmin(BaseUserAdmin, ModelAdmin):
     form = UserChangeForm
     change_password_form = AdminPasswordChangeForm
 
-    list_display = ('email', 'name', 'user_type', 'date_joined', 'last_login', 'get_managed_condominiums')
-
-    def get_managed_condominiums(self, obj):
-        if obj.user_type == 'admin':
-            return ", ".join([c.name for c in obj.managed_condominiums.all()])
-        elif obj.apartment:
-            return obj.apartment.condominium.name
-        return "-"
-    get_managed_condominiums.short_description = 'Condomínios'
+    list_display = ('email', 'name', 'user_type', 'date_joined', 'last_login', 'condominium')
 
     fieldsets = (
         (None, {'fields': ('email', 'name', 'user_type', 'cpf', 'apartment', 'position', 'condominium', 'managed_condominiums', 'password')}),

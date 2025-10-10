@@ -95,13 +95,13 @@ class Apartment(models.Model):
     )
     number = models.IntegerField(verbose_name='Número do Apartamento')
     block = models.CharField(max_length=10, verbose_name='Bloco')
-    tread = models.IntegerField(verbose_name='Piso')
+    tread = models.IntegerField(verbose_name='Piso', blank=True, null=True)
 
     class Occupation(models.TextChoices):
         OCCUPIED = 'occupied', 'Ocupado'
         UNOCCUPIED = 'unoccupied', 'Desocupado'
 
-    entry_date = models.DateField(null=True, blank=True, verbose_name='Data de Entrada')
+    entry_date = models.DateField(auto_now_add=True, verbose_name='Data de Entrada')
     exit_date = models.DateField(null=True, blank=True, verbose_name='Data de Saída')
     occupation = models.CharField(
         max_length=20,
