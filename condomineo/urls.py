@@ -19,10 +19,13 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from core.views import home
+
 urlpatterns = [
        path('painel/', admin.site.urls),
        # API endpoints
        path('api/v1/', include('condomineo.api_urls')),
+       path('', home, name='home'),
 
 ]
 

@@ -235,3 +235,9 @@ class CondominiumViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Apenas administradores podem criar condomínios.")
         else:
             serializer.save(created_by=self.request.user)
+
+
+
+def home(request):
+    from django.shortcuts import render
+    return render(request, 'pages/home.html', {})
