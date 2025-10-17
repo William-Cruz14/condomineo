@@ -67,7 +67,7 @@ class Person(AbstractUser):
 
     apartment = models.ForeignKey(
         'core.Apartment',
-        related_name='residents',
+        related_name='main_residents',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

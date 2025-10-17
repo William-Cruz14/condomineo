@@ -42,7 +42,7 @@ class FinanceForm(forms.ModelForm):
 class VehicleForm(forms.ModelForm):
     class Meta:
         model = Vehicle
-        fields = ['condominium', 'plate', 'model', 'color', 'garage', 'owner']
+        fields = ['condominium', 'plate', 'model', 'color', 'owner']
 
 
 

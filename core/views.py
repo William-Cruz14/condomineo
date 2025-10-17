@@ -2,11 +2,11 @@ from django.core.exceptions import ValidationError
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import DjangoModelPermissions
-from .models import Condominium, Visitor, Reservation, Apartment, Vehicle, Finance, Order, Visit
+from .models import Condominium, Visitor, Reservation, Apartment, Vehicle, Finance, Order, Visit, Resident
 from django.db.models import Q
 from .serializers import (
     VisitorSerializer, ReservationSerializer, ApartmentSerializer,
-    VehicleSerializer, FinanceSerializer, OrderSerializer, VisitSerializer, CondominiumSerializer
+    VehicleSerializer, FinanceSerializer, OrderSerializer, VisitSerializer, CondominiumSerializer, ResidentSerializer
 )
 from .permissions import IsOwnerOrAdmin
 from .filters import (
@@ -101,6 +101,30 @@ class ApartmentViewSet(viewsets.ModelViewSet):
 
         except ValidationError as e:
             raise PermissionDenied(e.messages)
+
+class ResidentViewSet(viewsets.ModelViewSet):
+    permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
+    serializer_class = ResidentSerializer
+    search_fields = ('registered_by__name',)
+
+    def get_queryset(self):
+        user = self.request.user
+        query_base = Resident.objects.select_related('registered_by', 'apartment')
+
+        if user.user_type == 'admin':
+            managed_condos = user.managed_condominiums.all()
+            return query_base.filter(apartment__condominium__in=managed_condos)
+
+        if user.user_type == 'resident':
+            return query_base.filter(registered_by=user)
+
+        return None
+
+    def perform_create(self, serializer):
+        serializer.save(
+            registered_by=self.request.user,
+            apartment=self.request.user.apartment
+        )
 
 class VisitViewSet(viewsets.ModelViewSet):
     permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]

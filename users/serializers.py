@@ -2,14 +2,14 @@ from rest_framework import serializers
 
 from core.models import Apartment, Condominium
 from .models import Person
-from core.serializers import ApartmentSerializer
 
 
 class PersonSerializer(serializers.ModelSerializer):
 
+
     apartment_number = serializers.IntegerField(write_only=True, required=False)
     apartment_block = serializers.CharField(write_only=True, required=False)
-    apartment = ApartmentSerializer(read_only=True)
+    apartment = serializers.SerializerMethodField()
     condominium = serializers.SlugRelatedField(queryset=Condominium.objects.all(), slug_field='code_condominium')
 
     managed_condominiums = serializers.StringRelatedField(many=True, read_only=True)
@@ -24,6 +24,12 @@ class PersonSerializer(serializers.ModelSerializer):
             'password': {'write_only': True},
             'registered_by': {'read_only': True},
         }
+
+    def get_apartment(self, obj):
+        if obj.apartment:
+            from core.serializers import ApartmentSerializer
+            return ApartmentSerializer(obj.apartment).data
+        return None
 
     def validate(self, data):
         # Adicione validações personalizadas aqui, se necessário

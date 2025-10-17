@@ -5,7 +5,7 @@ from unfold.admin import ModelAdmin
 from unfold.forms import AdminPasswordChangeForm, UserCreationForm, UserChangeForm
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (Apartment, Visitor, Reservation, Finance, Vehicle, Order, Visit, Condominium, Notice,
-                     Communication, Address)
+                     Communication, Address, Resident)
 from .forms import (
     VisitorForm, ReservationForm, FinanceForm, VehicleForm, ApartmentForm,
     OrderForm, CondominiumForm, NoticeForm, CommunicationForm
@@ -136,8 +136,8 @@ class FinanceAdmin(ModelAdmin):
 
 @admin.register(Vehicle)
 class VehicleAdmin(ModelAdmin):
-    list_display = ('plate', 'model', 'color', 'garage', 'owner', 'condominium')
-    search_fields = ('plate', 'model', 'color', 'garage')
+    list_display = ('plate', 'model', 'color', 'owner', 'condominium')
+    search_fields = ('plate', 'model', 'color',)
     list_filter = ('condominium',)
     form = VehicleForm
 
@@ -164,7 +164,7 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
 @admin.register(Order)
 class OrderAdmin(ModelAdmin):
     list_display = ('id', 'order_code', 'status', 'order_date', 'owner', 'registered_by')
-    search_fields = ('owner__document', 'order_date')
+    search_fields = ('owner__cpf', 'order_date',)
     ordering = ('-order_date',)
     form = OrderForm
 
@@ -192,4 +192,17 @@ class CommunicationAdmin(ModelAdmin):
     def save_model(self, request, obj, form, change):
         if not change:
             obj.sender = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(Resident)
+class ResidentAdmin(ModelAdmin):
+    list_display = ('name', 'cpf', 'apartment', 'registered_by')
+    search_fields = ('name', 'cpf', 'registered_by__name', 'apartment__number')
+    list_filter = ('apartment__condominium',)
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.registered_by = request.user
+            obj.apartment = request.user
         super().save_model(request, obj, form, change)

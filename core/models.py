@@ -9,7 +9,7 @@ class Condominium(models.Model):
     name = models.CharField(max_length=255, verbose_name='Nome do Condomínio')
     cnpj = models.CharField(max_length=20, unique=True, verbose_name='Cadastro Nacional da Pessoa Jurídica (CNPJ)')
     address = models.OneToOneField(
-        'Address',
+        'core.Address',
         on_delete=models.CASCADE,
         related_name='condominium',
         verbose_name='Endereço'
@@ -17,7 +17,7 @@ class Condominium(models.Model):
     code_condominium = models.CharField(max_length=20, unique=True, verbose_name='Código do Condomínio')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Data de Criação')
     created_by = models.ForeignKey(
-        Person,
+       'users.Person',
         on_delete=models.CASCADE,
         related_name='created_condominiums',
         verbose_name='Criado por'
@@ -56,7 +56,7 @@ class Address(models.Model):
 class Visitor(models.Model):
     # Definindo os campos do modelo
     condominium = models.ForeignKey(
-        Condominium,
+        'core.Condominium',
         on_delete=models.CASCADE,
         related_name='visitors',
         verbose_name='Condomínio'
@@ -69,7 +69,7 @@ class Visitor(models.Model):
     )
     telephone = models.CharField(max_length=11, blank=True, null=True, verbose_name='Telefone do Visitante')
     registered_by = models.ForeignKey(
-        Person,
+        'users.Person',
         on_delete=models.CASCADE,
         related_name='registered_visitors',
         verbose_name='Cadastrado por',
@@ -88,7 +88,7 @@ class Visitor(models.Model):
 class Apartment(models.Model):
     # Definindo os campos do modelo
     condominium = models.ForeignKey(
-        Condominium,
+        'core.Condominium',
         on_delete=models.CASCADE,
         related_name='apartments',
         verbose_name='Condomínio'
@@ -144,7 +144,7 @@ class Apartment(models.Model):
 class Visit(models.Model):
     # Definindo os campos do modelo
     visitor = models.ForeignKey(
-        Visitor,
+        'core.Visitor',
         on_delete=models.CASCADE,
         # changed related_name to plural for clarity
         related_name='visits',
@@ -152,7 +152,7 @@ class Visit(models.Model):
     )
 
     apartment = models.ForeignKey(
-        Apartment,
+        'core.Apartment',
         on_delete=models.CASCADE,
         # changed related_name to plural for clarity
         related_name='visits',
@@ -163,7 +163,7 @@ class Visit(models.Model):
     entry_date = models.DateTimeField(auto_now_add=True, verbose_name='Data da Visita')
     exit_date = models.DateTimeField(blank=True, null=True, verbose_name='Data de Saída')
     registered_by = models.ForeignKey(
-        Person,
+        'users.Person',
         on_delete=models.CASCADE,
         related_name='registered_visits',
         verbose_name='Cadastrado por',
@@ -195,7 +195,7 @@ class Reservation(models.Model):
 
     # Definindo os campos do modelo
     resident = models.ForeignKey(
-        Person,
+        'users.Person',
         on_delete=models.CASCADE,
         related_name='reservations',
         verbose_name='Morador',
@@ -253,21 +253,16 @@ class Reservation(models.Model):
         return f'Reserva - {self.space} - {self.resident.name} - {self.start_time} {self.end_time}'
 
 
-
-
-# Definindo o modelo de Comunicação
-
-
 class Finance(models.Model):
     # Definindo os campos do modelo
     condominium = models.ForeignKey(
-        Condominium,
+        'core.Condominium',
         on_delete=models.CASCADE,
         related_name='finances',
         verbose_name='Condomínio'
     )
     creator = models.ForeignKey(
-        Person,
+        'users.Person',
         on_delete=models.CASCADE,
         related_name='finance',
         verbose_name='Criador'
@@ -306,13 +301,13 @@ class Finance(models.Model):
 class Vehicle(models.Model):
     # Definindo os campos do modelo
     condominium = models.ForeignKey(
-        Condominium,
+        'core.Condominium',
         on_delete=models.CASCADE,
         related_name='vehicles',
         verbose_name='Condomínio'
     )
     registered_by = models.ForeignKey(
-        Person,
+        'users.Person',
         on_delete=models.CASCADE,
         related_name='registered_vehicles',
         verbose_name='Cadastrado por'
@@ -321,13 +316,11 @@ class Vehicle(models.Model):
     model = models.CharField(max_length=50, verbose_name='Modelo do Veículo')
     color = models.CharField(max_length=20, verbose_name='Cor do Veículo')
     owner = models.ForeignKey(
-        Person,
+        'users.Person',
         on_delete=models.CASCADE,
         related_name='vehicles',
         verbose_name='Proprietário'
     )
-    garage = models.CharField(max_length=10, verbose_name='Garagem')
-
     class Meta:
         verbose_name = 'Veículo'
         verbose_name_plural = 'Veículos'
@@ -339,16 +332,14 @@ class Vehicle(models.Model):
         return f'Veículo {self.model} - {self.plate} - Proprietário: {self.owner.name}'
 
 
-
 class Order(models.Model):
     # Definindo os tipos de 'status' disponíveis para o pedido
     class StatusChoices(models.TextChoices):
         RECEIVED = 'recebido', 'Recebido'
-        IN_PROGRESS = 'em_progresso', 'Em Progresso'
-        COMPLETED = 'concluído', 'Concluído'
+        COMPLETED = 'entregue', 'Entregue'
 
     registered_by = models.ForeignKey(
-        Person,
+        'users.Person',
         on_delete=models.CASCADE,
         related_name='registered_orders',
         verbose_name='Cadastrado por'
@@ -371,15 +362,11 @@ class Order(models.Model):
         help_text='Selecione o status atual do pedido.'
     )
     owner = models.ForeignKey(
-        Person,
+        'users.Person',
         on_delete=models.CASCADE,
         related_name='orders',
         verbose_name='Proprietário do Pedido'
     )
-
-    @property
-    def condominium(self):
-        return self.owner.apartment.condominium if self.owner.apartment else None
 
     class Meta:
         verbose_name = 'Encomenda'
@@ -397,7 +384,7 @@ class Order(models.Model):
 class Notice(models.Model):
     # Definindo os campos do modelo
     condominium = models.ForeignKey(
-        Condominium,
+        'core.Condominium',
         on_delete=models.CASCADE,
         related_name='notices',
         verbose_name='Condomínio'
@@ -414,7 +401,7 @@ class Notice(models.Model):
         help_text='Anexe um arquivo relacionado ao aviso, se necessário.'
     )
     author = models.ForeignKey(
-        Person,
+        'users.Person',
         on_delete=models.CASCADE,
         related_name='notices',
         verbose_name='Autor'
@@ -431,7 +418,7 @@ class Notice(models.Model):
 class Communication(models.Model):
     # Definindo os campos do modelo
     condominium = models.ForeignKey(
-        Condominium,
+        'core.Condominium',
         on_delete=models.CASCADE,
         related_name='communications',
         verbose_name='Condomínio'
@@ -440,7 +427,7 @@ class Communication(models.Model):
     message = models.TextField(verbose_name='Mensagem')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Data de Criação')
     sender = models.ForeignKey(
-        Person,
+        'users.Person',
         on_delete=models.CASCADE,
         related_name='sent_communications',
         verbose_name='Remetente'
@@ -457,3 +444,39 @@ class Communication(models.Model):
 
     def __str__(self):
         return f'Comunicação: {self.title} - Remetente: {self.sender.name}'
+
+
+class Resident(models.Model):
+    name = models.CharField(max_length=255, verbose_name='Nome do Morador')
+    cpf = models.CharField(
+        max_length=11,
+        unique=True,
+        verbose_name='Cadastro de Pessoa Física (CPF)',
+        help_text='Apenas números, sem pontos ou traços.'
+    )
+    phone = models.CharField(
+        max_length=11,
+        blank=True,
+        null=True,
+        verbose_name='Telefone do Morador'
+    )
+    registered_by = models.ForeignKey(
+        'users.Person',
+        on_delete=models.CASCADE,
+        related_name='registered_residents',
+        verbose_name='Morador Principal'
+    )
+    apartment = models.ForeignKey(
+        'core.Apartment',
+        on_delete=models.CASCADE,
+        related_name='dependents',
+        verbose_name='Apartamento'
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Data de Criação'
+    )
+
+    class Meta:
+        verbose_name = 'Dependente'
+        verbose_name_plural = 'Dependentes'
