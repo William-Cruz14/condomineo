@@ -102,10 +102,7 @@ REST_AUTH = {
     'USE_JWT': True,
 }
 
-
-
 # Configurações do django-allauth
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
 

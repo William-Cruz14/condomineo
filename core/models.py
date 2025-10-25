@@ -67,7 +67,10 @@ class Visitor(models.Model):
         verbose_name='Cadastro de Pessoa Física (CPF)',
         help_text='Apenas números, sem pontos ou traços.'
     )
-    telephone = models.CharField(max_length=11, blank=True, null=True, verbose_name='Telefone do Visitante')
+    telephone = models.CharField(
+        max_length=11, blank=True,
+        null=True, verbose_name='Telefone do Visitante'
+    )
     registered_by = models.ForeignKey(
         'users.Person',
         on_delete=models.CASCADE,
@@ -209,7 +212,7 @@ class Reservation(models.Model):
         help_text='Selecione o espaço que deseja reservar.'
     )
     start_time = models.DateTimeField(verbose_name='Data e Hora Início')
-    end_time = models.DateTimeField(verbose_name='Data e Hora de Fim', blank=True, null=True)
+    end_time = models.DateTimeField(verbose_name='Data e Hora de Fim')
 
     # Validando os dados antes de salvar
     def clean(self, *args, **kwargs):

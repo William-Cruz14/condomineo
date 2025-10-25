@@ -1,12 +1,13 @@
 from django.core.exceptions import ValidationError
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import DjangoModelPermissions
+from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated, IsAdminUser
 from .models import Condominium, Visitor, Reservation, Apartment, Vehicle, Finance, Order, Visit, Resident
 from django.db.models import Q
 from .serializers import (
     VisitorSerializer, ReservationSerializer, ApartmentSerializer,
-    VehicleSerializer, FinanceSerializer, OrderSerializer, VisitSerializer, CondominiumSerializer, ResidentSerializer
+    VehicleSerializer, FinanceSerializer, OrderSerializer, VisitSerializer,
+    CondominiumSerializer, ResidentSerializer, ResidentAdminSerializer, ReservationAdminSerializer
 )
 from .permissions import IsOwnerOrAdmin
 from .filters import (
@@ -33,13 +34,17 @@ class VisitorViewSet(viewsets.ModelViewSet):
             return query_base.filter(registered_by=user)
 
     def perform_create(self, serializer):
-        condominium = None
-        if self.request.user.apartment:
-            condominium = self.request.user.apartment.condominium
-        elif self.request.user.user_type == 'admin':
-            condominium = serializer.validated_data.get('condominium')
-
-        serializer.save(registered_by=self.request.user, condominium=condominium)
+        user = self.request.user
+        # Verifica se o usuário possui um apartamento associado
+        if user.apartment:
+            # Busca o condomínio associado ao apartamento do usuário
+            condominium = user.apartment.condominium
+            serializer.save(
+                registered_by=self.request.user,
+                condominium=condominium
+            )
+        else:
+            serializer.save(registered_by=self.request.user)
 
 class ReservationViewSet(viewsets.ModelViewSet):
     serializer_class = ReservationSerializer
@@ -69,6 +74,40 @@ class ReservationViewSet(viewsets.ModelViewSet):
             serializer.save(resident=self.request.user)
         except ValidationError as e:
             raise PermissionDenied(e.messages)
+
+
+class ReservationAdminViewSet(viewsets.ModelViewSet):
+    serializer_class = ReservationAdminSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    filterset_class = ReservationFilter
+    search_fields = ('space',)
+    ordering_fields = ('start_time', 'end_time')
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type not in ['admin', 'employee']:
+            raise PermissionDenied("Apenas a administração podem acessar esta seção.")
+
+        elif user.user_type == 'admin':
+            managed_condos = user.managed_condominiums.all()
+            # Retorna todas as reservas dos condomínios gerenciados pelo administrador
+            return Reservation.objects.select_related(
+                'resident__apartment__condominium'
+            ).filter(resident__apartment__condominium__in=managed_condos)
+
+        elif user.user_type == 'employee':
+            # Retorna todas as reservas do condomínio associado ao funcionário
+            return Reservation.objects.select_related(
+                'resident__apartment__condominium'
+            ).filter(resident__apartment__condominium=user.condominium)
+
+        else:
+            return Reservation.objects.none()
+
+    def perform_create(self, serializer):
+        if self.request.user.user_type != 'admin':
+            raise PermissionDenied("Apenas administradores podem criar reservas.")
+        serializer.save()
 
 class ApartmentViewSet(viewsets.ModelViewSet):
     permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
@@ -103,7 +142,7 @@ class ApartmentViewSet(viewsets.ModelViewSet):
             raise PermissionDenied(e.messages)
 
 class ResidentViewSet(viewsets.ModelViewSet):
-    permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticated,]
     serializer_class = ResidentSerializer
     search_fields = ('registered_by__name',)
 
@@ -118,13 +157,33 @@ class ResidentViewSet(viewsets.ModelViewSet):
         if user.user_type == 'resident':
             return query_base.filter(registered_by=user)
 
-        return None
+        return Resident.objects.none()
 
     def perform_create(self, serializer):
         serializer.save(
             registered_by=self.request.user,
             apartment=self.request.user.apartment
         )
+
+class ResidentAdminViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    serializer_class = ResidentAdminSerializer
+    search_fields = ('registered_by__name',)
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type != 'admin':
+            raise PermissionDenied("Apenas administradores podem acessar esta seção.")
+
+        managed_condos = user.managed_condominiums.all()
+        return Resident.objects.select_related(
+            'registered_by', 'apartment', 'apartment__condominium'
+        ).filter(apartment__condominium__in=managed_condos)
+
+    def perform_create(self, serializer):
+        if self.request.user.user_type != 'admin':
+            raise PermissionDenied("Apenas administradores podem criar residentes.")
+        serializer.save()
 
 class VisitViewSet(viewsets.ModelViewSet):
     permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
@@ -172,13 +231,7 @@ class VehicleViewSet(viewsets.ModelViewSet):
 
 
     def perform_create(self, serializer):
-        condominium = None
-        if self.request.user.apartment:
-            condominium = self.request.user.apartment.condominium
-        elif self.request.user.user_type == 'admin':
-            condominium = serializer.validated_data.get('condominium')
-
-        serializer.save(registered_by=self.request.user, condominium=condominium)
+        serializer.save(registered_by=self.request.user)
 
 class FinanceViewSet(viewsets.ModelViewSet):
     permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
@@ -203,13 +256,7 @@ class FinanceViewSet(viewsets.ModelViewSet):
         return query_base.filter(creator=user)
 
     def perform_create(self, serializer):
-        condominium = None
-        if self.request.user.apartment:
-            condominium = self.request.user.apartment.condominium
-        elif self.request.user.user_type == 'admin':
-            condominium = serializer.validated_data.get('condominium')
-
-        serializer.save(creator=self.request.user, condominium=condominium)
+        serializer.save(creator=self.request.user)
 
 class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
