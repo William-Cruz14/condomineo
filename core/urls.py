@@ -4,7 +4,7 @@ from .views import (
     VisitorViewSet, ReservationViewSet, ApartmentViewSet,
     FinanceViewSet, VehicleViewSet, OrderViewSet, VisitViewSet,
     CondominiumViewSet, ResidentViewSet, ResidentAdminViewSet,
-    ReservationAdminViewSet
+    ReservationAdminViewSet, NoticeViewSet
 )
 
 router = DefaultRouter()
@@ -14,6 +14,7 @@ router.register(r'reservations', ReservationViewSet, basename='reservation')
 router.register(r'reservations-admin', ReservationAdminViewSet, basename='admin-reservation')
 router.register(r'apartments', ApartmentViewSet, basename='apartment')
 router.register(r'finances', FinanceViewSet, basename='finance')
+router.register(r'notices', NoticeViewSet, basename='notice')
 router.register(r'vehicles', VehicleViewSet, basename='vehicle')
 router.register(r'orders', OrderViewSet, basename='order')
 router.register(r'visits', VisitViewSet, basename='visit')

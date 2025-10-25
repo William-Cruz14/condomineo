@@ -7,7 +7,7 @@ from django.db.models import Q
 from .serializers import (
     VisitorSerializer, ReservationSerializer, ApartmentSerializer,
     VehicleSerializer, FinanceSerializer, OrderSerializer, VisitSerializer,
-    CondominiumSerializer, ResidentSerializer, ResidentAdminSerializer, ReservationAdminSerializer
+    CondominiumSerializer, ResidentSerializer, ResidentAdminSerializer, ReservationAdminSerializer, NoticeSerializer
 )
 from .permissions import IsOwnerOrAdmin
 from .filters import (
@@ -307,6 +307,15 @@ class CondominiumViewSet(viewsets.ModelViewSet):
         else:
             serializer.save(created_by=self.request.user)
 
+
+class NoticeViewSet(viewsets.ModelViewSet):
+    permission_classes = [DjangoModelPermissions, IsOwnerOrAdmin]
+    serializer_class = NoticeSerializer
+    search_fields = ('title',)
+    ordering_fields = ('created_at',)
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
 
 
 def home(request):

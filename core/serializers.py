@@ -1,6 +1,10 @@
 from rest_framework import serializers
 from users.serializers import PersonSerializer
-from .models import Visitor, Reservation, Apartment, Finance, Vehicle, Order, Visit, Condominium, Address, Resident
+from .models import (
+    Visitor, Reservation, Apartment, Finance,
+    Vehicle, Order, Visit, Condominium, Address, Resident,
+    Notice, Communication
+)
 
 
 class AddressSerializer(serializers.ModelSerializer):
@@ -340,3 +344,27 @@ class OrderSerializer(serializers.ModelSerializer):
             **validated_data
         )
         return order
+
+class NoticeSerializer(serializers.ModelSerializer):
+    creator = PersonSerializer(read_only=True)
+    condominium = CondominiumSerializer(read_only=True)
+    code_condominium = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = Notice
+        fields = (
+            'id', 'title', 'content', 'created_at',
+            'creator', 'condominium', 'code_condominium'
+        )
+        read_only_fields = (
+            'id', 'created_at', 'creator', 'condominium'
+        )
+
+    def create(self, validated_data):
+        # Extrai o código do condomínio dos dados validados
+        code_condominium = validated_data.pop('code_condominium')
+        # Busca o condomínio correspondente ao código fornecido
+        condominium = Condominium.objects.get(code_condominium=code_condominium)
+        # Cria a instância de Notice associada ao condomínio encontrado
+        notice = Notice.objects.create(condominium=condominium, **validated_data)
+        return notice

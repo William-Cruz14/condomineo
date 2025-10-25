@@ -17,7 +17,7 @@ class PersonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Person
         fields = (
-            'id', 'name', 'email', 'cpf', 'password', 'telephone', 'user_type', 'apartment_number',
+            'id', 'name', 'email', 'cpf', 'password', 'telephone', 'user_type', 'apartment_number', 'is_active',
             'apartment_block','apartment', 'position', 'condominium', 'managed_condominiums', 'registered_by'
         )
         extra_kwargs = {
