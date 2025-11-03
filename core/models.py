@@ -2,7 +2,7 @@ import uuid
 
 from django.db import models
 from django.contrib.auth.models import AbstractUser, Group
-from django.core.exceptions import ValidationError
+from rest_framework.serializers import ValidationError
 from users.models import Person
 
 class Condominium(models.Model):
@@ -24,6 +24,7 @@ class Condominium(models.Model):
     )
 
     class Meta:
+        ordering = ['id', 'name']
         verbose_name = 'Condomínio'
         verbose_name_plural = 'Condomínios'
 
@@ -38,7 +39,7 @@ class Condominium(models.Model):
 
 class Address(models.Model):
     street = models.CharField(max_length=255, verbose_name='Rua')
-    number = models.CharField(max_length=20, verbose_name='Número')
+    number = models.IntegerField(verbose_name='Número')
     complement = models.CharField(max_length=100, blank=True, null=True, verbose_name='Complemento')
     neighborhood = models.CharField(max_length=100, verbose_name='Bairro')
     city = models.CharField(max_length=100, verbose_name='Cidade')
@@ -82,6 +83,7 @@ class Visitor(models.Model):
         verbose_name = 'Visitante'
         verbose_name_plural = 'Visitantes'
         unique_together = ('cpf', 'condominium')
+        ordering = ['name', 'cpf']
 
     def __str__(self):
         return f'Visitante {self.name}'
@@ -117,6 +119,7 @@ class Apartment(models.Model):
     class Meta:
         verbose_name = 'Apartamento'
         verbose_name_plural = 'Apartamentos'
+        ordering = ['number', 'block', 'tread']
         constraints = [
             models.UniqueConstraint(fields=['number', 'block', 'condominium'], name='unique_apartment_per_condo')
         ]
@@ -146,10 +149,15 @@ class Apartment(models.Model):
 # Definindo o modelo de Visita
 class Visit(models.Model):
     # Definindo os campos do modelo
+    condominium = models.ForeignKey(
+        'core.Condominium',
+        on_delete=models.CASCADE,
+        related_name='visits',
+        verbose_name='Condomínio'
+    )
     visitor = models.ForeignKey(
         'core.Visitor',
         on_delete=models.CASCADE,
-        # changed related_name to plural for clarity
         related_name='visits',
         verbose_name='Visitante',
     )
@@ -157,7 +165,6 @@ class Visit(models.Model):
     apartment = models.ForeignKey(
         'core.Apartment',
         on_delete=models.CASCADE,
-        # changed related_name to plural for clarity
         related_name='visits',
         verbose_name='Apartamento',
     )
@@ -195,6 +202,13 @@ class Reservation(models.Model):
         COURT = 'quadra', 'Quadra Poliesportiva'
         PLAYGROUND = 'playground', 'Playground'
         GYM = 'academia', 'Academia'
+
+    condominium = models.ForeignKey(
+        'core.Condominium',
+        on_delete=models.CASCADE,
+        related_name='reservations',
+        verbose_name='Condomínio'
+    )
 
     # Definindo os campos do modelo
     resident = models.ForeignKey(
@@ -251,6 +265,7 @@ class Reservation(models.Model):
     class Meta:
         verbose_name = 'Reserva'
         verbose_name_plural = 'Reservas'
+        ordering = ['space']
 
     def __str__(self):
         return f'Reserva - {self.space} - {self.resident.name} - {self.start_time} {self.end_time}'
@@ -289,6 +304,7 @@ class Finance(models.Model):
     class Meta:
         verbose_name = 'Finança'
         verbose_name_plural = 'Finanças'
+        ordering = ['creator']
 
     def __str__(self):
         return f'Financeiro - {self.creator.name} - {self.date} - {self.value}'
@@ -327,6 +343,7 @@ class Vehicle(models.Model):
     class Meta:
         verbose_name = 'Veículo'
         verbose_name_plural = 'Veículos'
+        ordering = ['plate']
         constraints = [
             models.UniqueConstraint(fields=['plate', 'condominium'], name='unique_plate_per_condo')
         ]
@@ -340,6 +357,13 @@ class Order(models.Model):
     class StatusChoices(models.TextChoices):
         RECEIVED = 'recebido', 'Recebido'
         COMPLETED = 'entregue', 'Entregue'
+
+    condominium = models.ForeignKey(
+        'core.Condominium',
+        on_delete=models.CASCADE,
+        related_name='orders',
+        verbose_name='Condomínio'
+    )
 
     registered_by = models.ForeignKey(
         'users.Person',
@@ -374,7 +398,7 @@ class Order(models.Model):
     class Meta:
         verbose_name = 'Encomenda'
         verbose_name_plural = 'Encomendas'
-        ordering = ['-order_date']
+        ordering = ['-order_date', 'status', 'order_code']
 
     def __str__(self):
         return f'Encomenda {self.order_code} - {self.status} - {self.owner}'
@@ -444,18 +468,32 @@ class Communication(models.Model):
     class Meta:
         verbose_name = 'Comunicação'
         verbose_name_plural = 'Comunicações'
+        ordering = ['-created_at']
 
     def __str__(self):
         return f'Comunicação: {self.title} - Remetente: {self.sender.name}'
 
 
 class Resident(models.Model):
+    # Definindo os campos do modelo
+    condominium = models.ForeignKey(
+        'core.Condominium',
+        on_delete=models.CASCADE,
+        related_name='residents',
+        verbose_name='Condomínio'
+    )
     name = models.CharField(max_length=255, verbose_name='Nome do Morador')
     cpf = models.CharField(
         max_length=11,
         unique=True,
         verbose_name='Cadastro de Pessoa Física (CPF)',
         help_text='Apenas números, sem pontos ou traços.'
+    )
+    email = models.EmailField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name='Email do Dependente'
     )
     phone = models.CharField(
         max_length=11,
@@ -483,3 +521,4 @@ class Resident(models.Model):
     class Meta:
         verbose_name = 'Dependente'
         verbose_name_plural = 'Dependentes'
+        ordering = ['name', 'cpf']

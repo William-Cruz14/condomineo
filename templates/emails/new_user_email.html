@@ -2,26 +2,105 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Email</title>
+    <title>Novo Cadastro</title>
+    <style>
+        /* Estilos para melhor visualização em clientes de e-mail */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f7;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #fff;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        td {
+            padding: 8px 0;
+            border-bottom: 1px solid #eeeeee;
+        }
+        td:first-child {
+            font-weight: bold;
+            color: #555;
+        }
+        .button-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .button {
+            background-color: #3498db;
+            color: #fff;
+            padding: 12px 25px;
+            border-radius: 8px;
+            text-decoration: none;
+        }
+    </style>
 </head>
 <body>
-    <!-- app/templates/emails/new_user_email.html -->
-    <div style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 20px;">
-      <div style="max-width: 600px; margin: auto; background-color: #fff; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-        <h2 style="text-align: center; color: #2c3e50;">🏢 Novo cadastro no seu condomínio</h2>
+    <div class="container">
+        <h2>🏢 Novo cadastro no seu condomínio</h2>
         <p>Olá, administrador(a)!</p>
-        <p>Um novo usuário foi cadastrado:</p>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-          <tr><td><strong>Nome:</strong></td><td>{{ name }}</td></tr>
-          <tr><td><strong>Email:</strong></td><td>{{ email }}</td></tr>
-          <tr><td><strong>Telefone:</strong></td><td>{{ telephone }}</td></tr>
-          <tr><td><strong>Tipo de Usuário:</strong></td><td>{{ user_type }}</td></tr>
-        </table>
-        <div style="text-align: center; margin-top: 30px;">
-          <a href="#" style="background-color: #3498db; color: #fff; padding: 12px 25px; border-radius: 8px; text-decoration: none;">Ver detalhes no sistema</a>
-        </div>
-      </div>
-    </div>
+        <p>Um novo usuário solicitou cadastro e aguarda aprovação:</p>
 
+        <table>
+            <tr>
+                <td>Nome:</td>
+                <td>{{ name }}</td>
+            </tr>
+            <tr>
+                <td>Email:</td>
+                <td>{{ email }}</td>
+            </tr>
+            {% if telephone %}
+            <tr>
+                <td>Telefone:</td>
+                <td>{{ telephone }}</td>
+            </tr>
+            {% endif %}
+            <tr>
+                <td>Tipo de Usuário:</td>
+                <td>{{ user_type }}</td>
+            </tr>
+            {% if condominium %}
+            <tr>
+                <td>Condomínio (Cód):</td>
+                <td>{{ condominium }}</td>
+            </tr>
+            {% endif %}
+
+            {# Exibe o apartamento apenas se for um morador e o dado existir #}
+            {% if user_type == "Morador" and apartment and apartment != 'N/A' %}
+            <tr>
+                <td>Apartamento:</td>
+                <td>{{ apartment.number }} (Bloco: {{ apartment.block }})</td>
+            </tr>
+            {% endif %}
+
+            {# Exibe o cargo apenas se for um funcionário e o dado existir #}
+            {% if user_type == "Funcionário" and position and position != 'N/A' %}
+            <tr>
+                <td>Cargo:</td>
+                <td>{{ position }}</td>
+            </tr>
+            {% endif %}
+        </table>
+
+        <div class="button-container">
+            <a href="#" class="button">Aprovar no sistema</a>
+        </div>
+    </div>
 </body>
 </html>

@@ -1,15 +1,14 @@
 from rest_framework import serializers
-
 from core.models import Apartment, Condominium
+from utils.validators import validate_cpf, validate_telephone, validate_email, validate_user_type
 from .models import Person
 
 
 class PersonSerializer(serializers.ModelSerializer):
 
-
     apartment_number = serializers.IntegerField(write_only=True, required=False)
     apartment_block = serializers.CharField(write_only=True, required=False)
-    apartment = serializers.SerializerMethodField()
+    apartment = serializers.SerializerMethodField(read_only=True)
     condominium = serializers.SlugRelatedField(queryset=Condominium.objects.all(), slug_field='code_condominium')
 
     managed_condominiums = serializers.StringRelatedField(many=True, read_only=True)
@@ -18,14 +17,20 @@ class PersonSerializer(serializers.ModelSerializer):
         model = Person
         fields = (
             'id', 'name', 'email', 'cpf', 'password', 'telephone', 'user_type', 'apartment_number', 'is_active',
-            'apartment_block','apartment', 'position', 'condominium', 'managed_condominiums', 'registered_by'
+            'apartment_block', 'apartment', 'position', 'condominium', 'managed_condominiums', 'registered_by'
         )
         extra_kwargs = {
             'password': {'write_only': True},
-            'registered_by': {'read_only': True},
         }
+        read_only_fields = (
+            'id',
+            'is_active',
+            'registered_by',
+        )
 
-    def get_apartment(self, obj):
+    @staticmethod
+    def get_apartment(obj):
+        """Serializa o apartamento usando importação local para evitar circular import"""
         if obj.apartment:
             from core.serializers import ApartmentSerializer
             return ApartmentSerializer(obj.apartment).data
@@ -33,18 +38,21 @@ class PersonSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         # Adicione validações personalizadas aqui, se necessário
+        cpf = data.get('cpf')
+        if cpf:
+            validate_cpf(data['cpf'])
+
+        telephone = data.get('telephone')
+        if telephone:
+            validate_telephone(data['telephone'])
+
+        email = data.get('email')
+        if email:
+            validate_email(data['email'])
+
         user_type = data.get('user_type')
-        apartment_number = data.get('apartment_number')
-        apartment_block = data.get('apartment_block')
-        position = data.get('position')
-
-        if user_type == Person.UserType.RESIDENT:
-            if not apartment_number or not apartment_block:
-                raise serializers.ValidationError("Moradores devem estar associados a um apartamento.")
-
-        if user_type == Person.UserType.EMPLOYEE and not position:
-            raise serializers.ValidationError("Funcionários devem ter um cargo definido.")
-
+        if user_type:
+            validate_user_type(data['user_type'])
         return data
 
     def create(self, validated_data):
@@ -53,46 +61,59 @@ class PersonSerializer(serializers.ModelSerializer):
         apartment_block = validated_data.pop('apartment_block', None)
 
         # Guardando o condomínio antes de criar o usuário
-        condominium = validated_data.get('condominium')
+        condominium = validated_data.pop('condominium')
 
-        print(f"Número do Apto: {apartment_number}")
-        print(f"Bloco do Apto: {apartment_block}")
-        print(f"Objeto Condomínio: {condominium}")
+        name = validated_data.pop('name').title()
 
-        # Criando o usuário
-        user = Person.objects.create_user(**validated_data)
-
-        # Associando ao apartamento se os dados foram fornecidos
+       # Pegando os dados do apartamento
         if apartment_number and apartment_block and condominium:
             try:
+                apartment_block = apartment_block.upper().strip()
+
                 apt_instance, created = Apartment.objects.get_or_create(
                     number=apartment_number,
                     block=apartment_block,
                     condominium=condominium
                 )
-                print(f"Apartamento {'criado' if created else 'encontrado'}: {apt_instance}")
 
-                # Atualizando o status do apartamento para 'ocupado' se foi criado agora
+                # Atualizando a situação do apartamento para 'ocupado' se foi criado agora
                 if created:
                     apt_instance.occupation = 'occupied'
                     apt_instance.save()
 
-                user.apartment = apt_instance
-                user.save()
-                user.refresh_from_db()
-
+                person = Person.objects.create_user(
+                    apartment=apt_instance,
+                    condominium=condominium,
+                    name=name,
+                    **validated_data
+                )
             except Apartment.DoesNotExist:
                 raise serializers.ValidationError(
-                    f"Apartamento não encontrado com número {apartment_number}, bloco {apartment_block} no condomínio especificado.")
+                    f"Apartamento não encontrado com número {apartment_number}, "
+                    f"bloco {apartment_block} no condomínio especificado."
+                )
 
-        return user
+        else:
+            person = Person.objects.create_user(
+                name=name,
+                condominium=condominium,
+                **validated_data
+            )
+
+        return person
 
     def update(self, instance, validated_data):
+
+        validated_data.pop('apartment_number', None)
+        validated_data.pop('apartment_block', None)
+
         password = validated_data.pop('password', None)
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         if password:
             instance.set_password(password)
         instance.save()
+
         return instance
 

@@ -5,7 +5,7 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from users.models import Person
-from core.models import Visitor, Visit, Reservation, Apartment, Finance, Vehicle, Order, Notice
+from core.models import Visitor, Visit, Reservation, Apartment, Finance, Vehicle, Order, Notice, Communication
 
 User = get_user_model()
 
@@ -31,6 +31,7 @@ def create_user_group_and_permissions(sender, **kwargs):
 
     # Obter os modelos que precisamos
     models_map = {
+        'person': Person,
         'visitor': Visitor,
         'visit': Visit,
         'reservation': Reservation,
@@ -39,10 +40,12 @@ def create_user_group_and_permissions(sender, **kwargs):
         'vehicle': Vehicle,
         'order': Order,
         'notice': Notice,
+        'communication': Communication
     }
 
     # Definir as permissões por grupo
     moradores_perms = {
+        'person': ['view', 'add', 'change'],
         'visitor': ['view', 'add', 'change', 'delete'],
         'visit': ['view', 'add', 'change', 'delete'],
         'reservation': ['view', 'add', 'change', 'delete'],
@@ -51,20 +54,24 @@ def create_user_group_and_permissions(sender, **kwargs):
         'vehicle': ['view'],
         'order': ['view'],
         'notice': ['view'],
+        'communication': ['view', 'add'],
     }
 
     funcionarios_perms = {
-        'visitor': ['view', 'add', 'change', 'delete'],
-        'visit': ['view', 'add', 'change', 'delete'],
-        'reservation': ['view', 'add', 'change', 'delete'],
+        'person': ['view', 'add', 'change'],
+        'visitor': ['view', 'add', 'change'],
+        'visit': ['view', 'add', 'change'],
+        'reservation': ['view', 'add', 'change'],
         'apartment': ['view', 'add', 'change'],
         'finance': ['view', 'add', 'change'],
         'vehicle': ['view', 'add', 'change'],
         'order': ['view', 'add', 'change'],
         'notice': ['view', 'add', 'change'],
+        'communication': ['view', 'add', 'change'],
     }
 
     administracao_perms = {
+        'person': ['view', 'add', 'change', 'delete'],
         'visitor': ['view', 'add', 'change', 'delete'],
         'visit': ['view', 'add', 'change', 'delete'],
         'reservation': ['view', 'add', 'change', 'delete'],
@@ -73,6 +80,7 @@ def create_user_group_and_permissions(sender, **kwargs):
         'vehicle': ['view', 'add', 'change', 'delete'],
         'order': ['view', 'add', 'change', 'delete'],
         'notice': ['view', 'add', 'change', 'delete'],
+        'communication': ['view', 'add', 'change', 'delete']
     }
 
     # Função para adicionar permissões a um grupo

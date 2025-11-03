@@ -1,41 +1,31 @@
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, DjangoModelPermissions
 from rest_framework.viewsets import ModelViewSet
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from decouple import config
 from core.models import Apartment, Condominium
+from utils.utils import send_custom_email
+from .filters import queryset_filter_person, PersonFilterSet
 from .models import Person
 from .serializers import PersonSerializer
 
 class PersonView(ModelViewSet):
     serializer_class = PersonSerializer
+    filterset_class = PersonFilterSet
 
     def get_queryset(self):
         user = self.request.user
+        query_base = Person.objects.select_related('apartment', 'condominium')
+        return queryset_filter_person(query_base, user)
 
-        # Administrador vê pessoas dos condomínios que gerencia
-        if user.user_type == 'admin':
-            managed_condos = user.managed_condominiums.all()
-            return Person.objects.filter(
-                apartment__condominium__in=managed_condos
-            ).union(
-                Person.objects.filter(managed_condominiums__in=managed_condos)
-            )
-
-        # Morador vê apenas pessoas do mesmo condomínio
-        if user.apartment:
-            return Person.objects.filter(id=user.id)
-
-        # Funcionário vê apenas pessoas do condomínio onde trabalha
-        return Person.objects.filter(registered_by=user)
     def get_permissions(self):
         if self.action == 'create':
             return [AllowAny()]
 
-        return [IsAuthenticated()]
+        return [IsAuthenticated(), DjangoModelPermissions()]
 
     def create(self, request, *args, **kwargs):
         # Se o tipo de usuário for 'admin', retornar erro 403 (Forbidden)
@@ -44,63 +34,73 @@ class PersonView(ModelViewSet):
                             status=status.HTTP_403_FORBIDDEN)
 
         response = super().create(request, *args, **kwargs)
-        condominium_id = None
 
         if response.status_code == 201:
-            new_user_data = response.data
-            if new_user_data.get('user_type') == 'resident':
-                apartment = new_user_data.get('apartment')
-                print(apartment)
-                apartment_id = apartment.get('id') if apartment else None
-                print(f"Apartamento ID: {apartment_id}.")
-
-                if apartment_id:
-                    try:
-                        apartment = Apartment.objects.get(id=apartment_id)
-                        condominium_id = apartment.condominium.id
-                        print(f"Condominio ID: {condominium_id}")
-                    except Apartment.DoesNotExist:
-                        print("Apartamento não encontrado.")
-
-            else:
-                condominium_code = new_user_data.get('condominium')
-                print(condominium_code)
-                condominium_id = Condominium.objects.get(code_condominium=condominium_code).id if condominium_code else None
-                print(f"Condominio ID (funcionário): {condominium_id}")
-
-            if condominium_id:
-                print("Estou enviando email")
-                print(condominium_id)
-                admins = Person.objects.filter(
-                    managed_condominiums__id=condominium_id,
-                    user_type='admin'
-                )
-
-                context = {
-                    'name': new_user_data.get('name'),
-                    'email': new_user_data.get('email'),
-                    'telephone': new_user_data.get('telephone'),
-                    'user_type': "Morador" if new_user_data.get('user_type') == 'resident' else "Funcionário",
-                }
-
-                html_message = render_to_string('emails/new_user_email.html', context)
-                message = f"Olá, o usuário {context['name']} acaba de ser cadastrado no sistema."
-                print(f"Admins encontrados: {admins.count()}")
-
-                subject = "🎉 Novo cadastro realizado!"
-                from_email = config('EMAIL_HOST_USER')
-                recipient_list = [admin.email for admin in admins]
-
-                send_mail(
-                    subject,
-                    message,
-                    from_email,
-                    recipient_list,
-                    html_message=html_message,
-                )
+            self.send_new_user_notification(response.data)
 
         return response
 
+
+    def send_new_user_notification(self, user_data):
+        """
+        Busca os administradores e envia o e-mail de notificação de novo usuário.
+        """
+        condominium_id = self._get_condominium_id_from_user_data(user_data)
+
+        if not condominium_id:
+            print("Não foi possível determinar o condomínio para enviar a notificação.")
+            return
+
+        admins = Person.objects.filter(
+            managed_condominiums__id=condominium_id,
+            user_type='admin'
+        )
+
+        if not admins.exists():
+            print(f"Nenhum administrador encontrado para o condomínio ID {condominium_id}.")
+            return
+
+        context = {
+            'name': user_data.get('name'),
+            'email': user_data.get('email'),
+            'condominium' : user_data.get('condominium'),
+            'apartment': user_data.get('apartment') if user_data.get('user_type') == 'resident' else 'N/A',
+            'position': user_data.get('position') if user_data.get('user_type') == 'employee' else 'N/A',
+            'telephone': user_data.get('telephone'),
+            'user_type': "Morador" if user_data.get('user_type') == 'resident' else "Funcionário",
+        }
+
+        recipient_list = [admin.email for admin in admins]
+
+        send_custom_email(
+            subject="🎉 Novo cadastro realizado!",
+            template_name='emails/new_user_email.html',
+            context=context,
+            recipient_list=recipient_list
+        )
+
+
+    def _get_condominium_id_from_user_data(self, user_data):
+        """
+        Lógica auxiliar para obter o ID do condomínio a partir dos dados do usuário.
+        """
+        if user_data.get('user_type') == 'resident':
+            apartment_data = user_data.get('apartment')
+            if apartment_data and apartment_data.get('id'):
+                try:
+                    apartment = Apartment.objects.select_related('condominium').get(id=apartment_data['id'])
+                    return apartment.condominium.id
+                except Apartment.DoesNotExist:
+                    return None
+        else:
+            condominium_code = user_data.get('condominium')
+            if condominium_code:
+                try:
+                    condominium = Condominium.objects.get(code_condominium=condominium_code)
+                    return condominium.id
+                except Condominium.DoesNotExist:
+                    return None
+        return None
     @action(detail=False, methods=['get'])
     def me(self, request):
         user = self.request.user

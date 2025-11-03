@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import dj_database_url
+from datetime import timedelta
 from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -102,6 +103,13 @@ REST_AUTH = {
     'USE_JWT': True,
 }
 
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # 1 hora
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # 7 dias
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+}
 # Configurações do django-allauth
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
@@ -128,7 +136,7 @@ REST_FRAMEWORK = {
 
 # Configurações do drf-spectacular
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Condomineo API',
+    'TITLE': 'PorttuSmart API',
     'DESCRIPTION': 'API para gestão de condomínios - schema gerado pelo drf-spectacular',
     'VERSION': '1.0.0',
     'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
@@ -196,10 +204,14 @@ CORS_ALLOW_HEADERS = [
 # Se modo DEBUG for True, use o banco de dados local
 if DEBUG:
     DATABASES = {
-        'default': dj_database_url.config(
-            default=config('DATABASE_URL'),
-            conn_max_age=600,
-        )
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DB_NAME'),
+            'USER': config('DB_USER'),
+            'PASSWORD': config('DB_PASSWORD'),
+            'HOST': config('DB_HOST', default='localhost'),
+            'PORT': config('DB_PORT', default='5432'),
+        }
     }
 else:
     DATABASES = {

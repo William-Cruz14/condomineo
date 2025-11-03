@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import AbstractUser, BaseUserManager, Group
 from django.db import models
+from rest_framework.serializers import ValidationError
 
 # CustomUserManager para gerenciar a criação de usuários e superusuários
 class CustomPersonManager(BaseUserManager):
@@ -16,6 +17,7 @@ class CustomPersonManager(BaseUserManager):
         else:
             user.is_active = False
 
+        user.full_clean()
         user.save(using=self._db)
         return user
 
@@ -44,7 +46,8 @@ class Person(AbstractUser):
     email = models.EmailField(verbose_name='E-mail', max_length=255, unique=True)
     cpf = models.CharField(
         max_length=11, unique=True,
-        null=False, verbose_name='Cadastro de Pessoa Física (CPF)')
+        null=False, verbose_name='Cadastro de Pessoa Física (CPF)'
+    )
 
     telephone = models.CharField(max_length=11, blank=True, null=True, verbose_name='Telefone')
     user_type = models.CharField(
@@ -105,11 +108,14 @@ class Person(AbstractUser):
 
     def clean(self):
         super().clean()
-        if self.user_type == self.UserType.RESIDENT and not self.apartment:
-            raise ValueError('Moradores devem ter um apartamento associado.')
-        if self.user_type == self.UserType.EMPLOYEE and not self.position:
-            raise ValueError('Funcionários devem ter um cargo definido.')
+        if self.user_type == "resident" and not self.apartment:
+            raise ValidationError('Moradores devem ter um apartamento associado.')
 
+        if self.user_type in ["resident", "employee"] and not self.condominium:
+            raise ValidationError("Usuários que não são administradores devem ter um condomínio associado.")
+
+        if self.user_type == "employee" and not self.position:
+            raise ValidationError("Funcionários devem ter um cargo definido.")
 
     def approve_person(self):
         """Aprova o usuário, ativando sua conta."""
