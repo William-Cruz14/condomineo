@@ -1,6 +1,7 @@
 import os
 import pdfplumber
 import docx
+import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -162,6 +163,18 @@ class NoticeViewSet(viewsets.ModelViewSet):
         # Prioriza o arquivo complementar, se existir
         if notice.file_complement and hasattr(notice.file_complement, 'path'):
             file_path = notice.file_complement.path
+            logging.info(f"Tentando processar o arquivo do caminho: {file_path}")
+
+            # DEBUG: Verificar se o arquivo existe no sistema de arquivos do contêiner
+            if not os.path.exists(file_path):
+                logging.error(f"FALHA: O arquivo '{file_path}' não foi encontrado no sistema de arquivos do contêiner.")
+                return Response(
+                    {
+                        "error": f"Erro interno: arquivo complementar '{notice.file_complement.name}' não encontrado no servidor."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            logging.info(f"SUCESSO: Arquivo '{file_path}' encontrado. Processando...")
             file_extension = os.path.splitext(file_path)[1].lower()
 
             try:
@@ -174,8 +187,16 @@ class NoticeViewSet(viewsets.ModelViewSet):
                     paragraphs = [p.text for p in doc.paragraphs if p.text]
                     text_content = "\n".join(paragraphs)
                 else:
+                    # Se não for PDF ou DOCX, usa o conteúdo do aviso como fallback
                     text_content = notice.content
+            except FileNotFoundError:
+                logging.error(f"Erro de FileNotFoundError ao tentar abrir '{file_path}'.")
+                return Response(
+                    {"error": "Erro ao abrir o arquivo complementar, pois ele não foi encontrado."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
             except Exception as e:
+                logging.error(f"Erro inesperado ao processar o arquivo '{file_path}': {str(e)}")
                 return Response(
                     {"error": f"Erro ao processar o arquivo: {str(e)}"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -189,7 +210,7 @@ class NoticeViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Usa o serviço de sumarização com o modelo da Hugging Face
+        # Usa o serviço de sumarização
         summary = summarize_text(text_content)
 
         if not summary:
