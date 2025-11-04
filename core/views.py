@@ -28,6 +28,8 @@ from .filters import (
 )
 from .services import summarize_text
 
+logger = logging.getLogger(__name__)
+
 class VisitorViewSet(viewsets.ModelViewSet):
     serializer_class = VisitorSerializer
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
@@ -163,18 +165,18 @@ class NoticeViewSet(viewsets.ModelViewSet):
         # Prioriza o arquivo complementar, se existir
         if notice.file_complement and hasattr(notice.file_complement, 'path'):
             file_path = notice.file_complement.path
-            logging.info(f"Tentando processar o arquivo do caminho: {file_path}")
+            logger.info(f"Tentando processar o arquivo do caminho: {file_path}")
 
             # DEBUG: Verificar se o arquivo existe no sistema de arquivos do contêiner
             if not os.path.exists(file_path):
-                logging.error(f"FALHA: O arquivo '{file_path}' não foi encontrado no sistema de arquivos do contêiner.")
+                logger.error(f"FALHA: O arquivo '{file_path}' não foi encontrado no sistema de arquivos do contêiner.")
                 return Response(
                     {
                         "error": f"Erro interno: arquivo complementar '{notice.file_complement.name}' não encontrado no servidor."},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
-            logging.info(f"SUCESSO: Arquivo '{file_path}' encontrado. Processando...")
+            logger.info(f"SUCESSO: Arquivo '{file_path}' encontrado. Processando...")
             file_extension = os.path.splitext(file_path)[1].lower()
 
             try:
@@ -190,13 +192,13 @@ class NoticeViewSet(viewsets.ModelViewSet):
                     # Se não for PDF ou DOCX, usa o conteúdo do aviso como fallback
                     text_content = notice.content
             except FileNotFoundError:
-                logging.error(f"Erro de FileNotFoundError ao tentar abrir '{file_path}'.")
+                logger.error(f"Erro de FileNotFoundError ao tentar abrir '{file_path}'.")
                 return Response(
                     {"error": "Erro ao abrir o arquivo complementar, pois ele não foi encontrado."},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
             except Exception as e:
-                logging.error(f"Erro inesperado ao processar o arquivo '{file_path}': {str(e)}")
+                logger.error(f"Erro inesperado ao processar o arquivo '{file_path}': {str(e)}")
                 return Response(
                     {"error": f"Erro ao processar o arquivo: {str(e)}"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR

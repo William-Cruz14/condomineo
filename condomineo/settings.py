@@ -9,7 +9,8 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-
+import sys
+import os
 from pathlib import Path
 import dj_database_url
 from datetime import timedelta
@@ -295,14 +296,14 @@ LOGGING = {
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+            'stream': sys.stdout,
         },
     },
     'loggers': {
         'django': {
             'handlers': ['console'],
             'level': 'INFO',
-            'propagate': True,
+            'propagate': False,
         },
         'users': {
             'handlers': ['console'],
@@ -313,6 +314,10 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': True,
+        },
+        'root': {
+            'handlers': ['console'],
+            'level' : os.getenv('DJANGO_LOG_LEVEL', default='INFO'),
         },
     },
 }
