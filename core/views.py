@@ -1,4 +1,10 @@
-from rest_framework import viewsets
+import os
+import pdfplumber
+import docx
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.response import Response
 from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated, IsAdminUser
 from .models import (
     Condominium, Visitor, Reservation, Apartment,
@@ -11,7 +17,6 @@ from .serializers import (
     CondominiumSerializer, ResidentSerializer,
     NoticeSerializer, CommunicationSerializer
 )
-from .permissions import IsOwnerOrAdmin, IsResident
 from .filters import (
     ApartmentFilter, VehicleFilter, FinanceFilter,
     ReservationFilter, VisitorFilter, OrderFilter, CondominiumFilter, VisitFilter,
@@ -20,6 +25,7 @@ from .filters import (
     queryset_filter_order, queryset_filter_notice, queryset_filter_communication, NoticeFilter, ResidentFilter,
     CommunicationFilter
 )
+from .services import summarize_text
 
 class VisitorViewSet(viewsets.ModelViewSet):
     serializer_class = VisitorSerializer
@@ -141,11 +147,58 @@ class NoticeViewSet(viewsets.ModelViewSet):
     filterset_class = NoticeFilter
     search_fields = ('title',)
     ordering_fields = ('created_at',)
+    parser_classes = (MultiPartParser, FormParser,)
 
     def get_queryset(self):
         user = self.request.user
         query_base = Notice.objects.select_related('author', 'condominium')
         return queryset_filter_notice(query_base, user)
+
+    @action(detail=True, methods=['get'], url_path='summarize')
+    def summarize(self, request, pk=None):
+        notice = self.get_object()
+        text_content = ""
+
+        # Prioriza o arquivo complementar, se existir
+        if notice.file_complement and hasattr(notice.file_complement, 'path'):
+            file_path = notice.file_complement.path
+            file_extension = os.path.splitext(file_path)[1].lower()
+
+            try:
+                if file_extension == '.pdf':
+                    with pdfplumber.open(file_path) as pdf:
+                        pages = [page.extract_text() for page in pdf.pages if page.extract_text()]
+                        text_content = "\n".join(pages)
+                elif file_extension == '.docx':
+                    doc = docx.Document(file_path)
+                    paragraphs = [p.text for p in doc.paragraphs if p.text]
+                    text_content = "\n".join(paragraphs)
+                else:
+                    text_content = notice.content
+            except Exception as e:
+                return Response(
+                    {"error": f"Erro ao processar o arquivo: {str(e)}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        else:
+            text_content = notice.content
+
+        if not text_content:
+            return Response(
+                {"error": "Nenhum conteúdo disponível para resumir."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Usa o serviço de sumarização com o modelo da Hugging Face
+        summary = summarize_text(text_content)
+
+        if not summary:
+            return Response(
+                {"error": "Não foi possível gerar o resumo. Verifique os logs do servidor para mais detalhes."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        return Response({"summary": summary})
 
 
 class CommunicationViewSet(viewsets.ModelViewSet):

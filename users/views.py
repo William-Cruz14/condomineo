@@ -3,9 +3,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny, DjangoModelPermissions
 from rest_framework.viewsets import ModelViewSet
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
-from decouple import config
 from core.models import Apartment, Condominium
 from utils.utils import send_custom_email
 from .filters import queryset_filter_person, PersonFilterSet

@@ -47,7 +47,7 @@ class NoticeAdmin(ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         if not change:
-            obj.created_by = request.user
+            obj.author = request.user
         super().save_model(request, obj, form, change)
 
 # Cadastro do modelo 'Apartamento' no site de administração, para que os síndicos e administradores possam gerenciar

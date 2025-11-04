@@ -1,5 +1,6 @@
 from decouple import config
 from huggingface_hub import InferenceClient
+import re
 
 print("Configurando cliente de inferência da Hugging Face...")
 try:
@@ -9,16 +10,30 @@ try:
         raise ValueError("A variável de ambiente HUGGINGFACE_TOKEN não foi configurada.")
 
     # Passa o token explicitamente para o cliente
-    inference_client = InferenceClient(token=huggingface_token)
+    inference_client = InferenceClient(
+        provider="novita",
+        token=huggingface_token
+    )
 
     # Define o modelo que será usado para a sumarização
-    MODEL_ID = "csebuetnlp/mT5_multilingual_XLSum"
+    MODEL_ID = "meta-llama/Llama-3.2-3B-Instruct"
     print("Cliente de inferência configurado com sucesso.")
 
 except Exception as e:
     print(f"Erro ao configurar o cliente de inferência: {e}")
     inference_client = None
 
+
+def reformat_text(text: str) -> str | None:
+    """
+    Remove formatações indesejadas do texto retornado pela API.
+    Args:
+        text: O texto a ser reformulado.
+    Returns:
+        O texto reformulado.
+    """
+    reformatted_text = re.sub(r"(\*)+", "", text)
+    return reformatted_text
 
 def summarize_text(text_to_summarize: str) -> str | None:
     """
@@ -35,14 +50,31 @@ def summarize_text(text_to_summarize: str) -> str | None:
         return None
 
     try:
+        prompt = (
+            "Resuma o seguinte texto em português de forma detalhada. "
+            "Não inclua saudações ou frases introdutórias na sua resposta, "
+            "apenas o resumo em si.\n\n"
+            f"Texto:\n{text_to_summarize}"
+        )
         # Chama a API de sumarização, passando os parâmetros diretamente
-        summary_list = inference_client.summarization(
-            text_to_summarize,
+        summary_list = inference_client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
             model=MODEL_ID,
+            max_tokens=1024,
+            temperature=0.7,
+            top_p=0.9,
+            n=1
         )
         # A API pode retornar uma lista, então pegamos o primeiro item.
         # O objeto retornado tem um atributo 'summary_text'.
-        return summary_list[0]['summary_text'] if isinstance(summary_list, list) else summary_list.get('summary_text')
+        # Extrai o conteúdo da resposta do Llama
+        md_summary = summary_list.choices[0].message.content
+        return reformat_text(md_summary)
 
     except Exception as e:
         print(f"Erro ao gerar o resumo via API: {e}")

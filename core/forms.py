@@ -55,7 +55,7 @@ class OrderForm(forms.ModelForm):
 class NoticeForm(forms.ModelForm):
     class Meta:
         model = Notice
-        fields = ['title', 'content', 'condominium', 'file_complement']
+        fields = ['title', 'content', 'condominium', 'file_complement', 'author']
 
 
 class CommunicationForm(forms.ModelForm):

@@ -681,18 +681,18 @@ class OrderSerializer(serializers.ModelSerializer):
         return instance
 
 class NoticeSerializer(serializers.ModelSerializer):
-    creator = PersonSerializer(read_only=True)
+    author = PersonSerializer(read_only=True)
     condominium = CondominiumSerializer(read_only=True)
     code_condominium = serializers.CharField(write_only=True)
 
     class Meta:
         model = Notice
         fields = (
-            'id', 'title', 'content', 'created_at',
-            'creator', 'condominium', 'code_condominium'
+            'id', 'title', 'content', 'created_at', 'file_complement',
+            'author', 'condominium', 'code_condominium'
         )
         read_only_fields = (
-            'id', 'created_at', 'creator', 'condominium'
+            'id', 'created_at', 'author', 'condominium'
         )
 
     def create(self, validated_data):
@@ -725,13 +725,10 @@ class NoticeSerializer(serializers.ModelSerializer):
             condominium = get_condominium_to_code(code_condominium)
             instance.condominium = condominium
 
-        title = validated_data.get('title')
-        if title:
-            instance.title = title.title()
-
-        content = validated_data.get('content')
-        if content:
-            instance.content = content
+        for attr, value in validated_data.items():
+            if attr == 'title':
+                value = value.title()
+            setattr(instance, attr, value)
 
         instance.save()
         return instance
