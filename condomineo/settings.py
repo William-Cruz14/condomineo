@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import dj_database_url
 from datetime import timedelta
+from google.oauth2 import service_account
 from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -52,6 +53,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'drf_spectacular',
     'stdimage',
+    'storages',
     'django_filters',
     'rest_framework',
     'rest_framework.authtoken',
@@ -99,6 +101,18 @@ UNFOLD = {
         },
     },
 }
+
+GS_BUCKET_NAME = config('GS_BUCKET_NAME', default='')
+GS_PROJECT_ID = config('GS_PROJECT_ID', default='')
+
+DEFAULT_FILE_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
+STATICFILES_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
+
+STATICFILES_LOCATION = "static"
+MEDIAFILES_LOCATION = "media"
+
+MEDIA_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/{MEDIAFILES_LOCATION}/"
+STATIC_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/{STATICFILES_LOCATION}/"
 
 REST_AUTH = {
     'USE_JWT': True,
@@ -264,6 +278,7 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
+"""# Configurações para servir arquivos estáticos com WhiteNoise
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 STATIC_URL = '/static/'
@@ -274,6 +289,16 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_URL = '/media/'
+"""
+
+# Django ainda requer um caminho de filesystem para STATIC_ROOT
+STATIC_ROOT = BASE_DIR / "staticfiles"  # ex.: '/app/staticfiles'
+
+# Opcional: diretório de origem de assets locais que o collectstatic lê
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

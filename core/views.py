@@ -150,7 +150,6 @@ class NoticeViewSet(viewsets.ModelViewSet):
     filterset_class = NoticeFilter
     search_fields = ('title',)
     ordering_fields = ('created_at',)
-    parser_classes = (MultiPartParser, FormParser,)
 
     def get_queryset(self):
         user = self.request.user
