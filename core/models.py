@@ -192,6 +192,47 @@ class Visit(models.Model):
         if self.exit_date and self.exit_date <= self.entry_date:
             raise ValidationError('A data de saída deve ser posterior à data de entrada.')
 
+
+class Occurrence(models.Model):
+    # Definindo os tipos de 'status' disponíveis para a ocorrência
+    class StatusChoices(models.TextChoices):
+        OPEN = "aberta", "Aberta"
+        IN_PROGRESS = "em_andamento", "Em Andamento"
+        RESOLVED = "resolvida", "Resolvida"
+        CLOSED = "fechada", "Fechada"
+
+    # Definindo os campos do modelo
+    condominium = models.ForeignKey(
+        "core.Condominium",
+        on_delete=models.CASCADE,
+        related_name="ocurrences",
+        verbose_name="Condomínio"
+    )
+    title = models.CharField(max_length=255, verbose_name="Título da Ocorrência")
+    description = models.TextField(verbose_name='Descrição da Ocorrência')
+    status = models.CharField(
+        max_length=20,
+        choices=StatusChoices.choices,
+        default=StatusChoices.OPEN,
+        verbose_name='Status da Ocorrência',
+        help_text='Selecione o status atual da ocorrência.'
+    )
+    date_reported = models.DateTimeField(auto_now_add=True, verbose_name='Data da Ocorrência')
+    reported_by = models.ForeignKey(
+        'users.Person',
+        on_delete=models.CASCADE,
+        related_name='reported_ocurrences',
+        verbose_name='Reportado por',
+    )
+
+    class Meta:
+        verbose_name = 'Ocorrência'
+        verbose_name_plural = 'Ocorrências'
+        ordering = ['-date_reported']
+
+    def __str__(self):
+        return f'Ocorrência: {self.title} - Reportado por: {self.reported_by.name}'
+
 # Definindo o modelo de Reserva
 class Reservation(models.Model):
     # Definindo os tipos de espaços disponíveis para reserva

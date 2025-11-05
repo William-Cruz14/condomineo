@@ -4,7 +4,7 @@ from .filters import getuser
 from core.models import (
     Visitor, Reservation, Apartment, Finance,
     Vehicle, Order, Visit, Condominium, Address, Resident,
-    Notice, Communication
+    Notice, Communication, Occurrence
 )
 from users.models import Person
 from .utils import get_condominium_to_code, get_apartment_number
@@ -611,6 +611,84 @@ class VehicleSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
         return instance
+
+class OccurrenceSerializer(serializers.ModelSerializer):
+
+    condominium = CondominiumSerializer(read_only=True)
+    apartment_number = serializers.IntegerField(write_only=True)
+    apartment_block = serializers.CharField(write_only=True)
+    code_condominium = serializers.CharField(write_only=True)
+    reported_by = PersonSerializer(read_only=True)
+
+    class Meta:
+        model = Occurrence
+        fields = (
+            'id', 'title', 'description', 'status',
+            'date_reported', 'condominium', 'reported_by',
+            'apartment_number', 'apartment_block', 'code_condominium'
+        )
+        read_only_fields = ('id', 'date_reported', 'condominium')
+
+    def create(self, validated_data):
+        user = getuser(self.context['request'])
+
+        code_condominium = validated_data.pop('code_condominium', None)
+        title = validated_data.pop('title', None)
+        status = validated_data.pop('status', None)
+
+        # Busca o condomínio correspondente ao código fornecido
+
+        apartment_number = validated_data.pop('apartment_number')
+        apartment_block = validated_data.pop('apartment_block')
+
+        if apartment_number and apartment_block and code_condominium:
+            condominium = get_condominium_to_code(code_condominium)
+            apartment = get_apartment_number(
+                condominium,
+                apartment_number,
+                apartment_block.upper()
+            )
+
+            validated_data['reported_by'] = apartment.main_residents.first()
+            validated_data['condominium'] = condominium
+        else:
+            validated_data['reported_by'] = user
+            validated_data['condominium'] = user.condominium
+
+        occurrence = Occurrence.objects.create(
+            title=title.title(),
+            status=status.lower(),
+            **validated_data
+        )
+        return occurrence
+
+
+    def update(self, instance, validated_data):
+
+        apartment_number = validated_data.pop('apartment_number', None)
+        apartment_block = validated_data.pop('apartment_block', None)
+        code_condominium = validated_data.pop('code_condominium', None)
+
+        if code_condominium and apartment_number and apartment_block:
+            condominium = get_condominium_to_code(code_condominium)
+            apartment = get_apartment_number(
+                condominium,
+                apartment_number,
+                apartment_block
+            )
+            main_resident = apartment.main_residents.first()
+            instance.reported_by = main_resident
+            instance.condominium = condominium
+
+        for attr, value in validated_data.items():
+            if attr == 'title':
+                value = value.title()
+            if attr == 'status':
+                value = value.lower()
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
 
 class OrderSerializer(serializers.ModelSerializer):
     # O campo 'registered_by' é somente leitura, pois é preenchido automaticamente com o usuário autenticado

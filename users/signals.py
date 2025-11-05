@@ -5,7 +5,10 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from users.models import Person
-from core.models import Visitor, Visit, Reservation, Apartment, Finance, Vehicle, Order, Notice, Communication
+from core.models import (
+    Visitor, Visit, Reservation, Apartment, Finance, Vehicle, Order, Notice,
+    Communication, Occurrence
+)
 
 User = get_user_model()
 
@@ -40,7 +43,8 @@ def create_user_group_and_permissions(sender, **kwargs):
         'vehicle': Vehicle,
         'order': Order,
         'notice': Notice,
-        'communication': Communication
+        'communication': Communication,
+        'occurrence': Occurrence,
     }
 
     # Definir as permissões por grupo
@@ -55,6 +59,7 @@ def create_user_group_and_permissions(sender, **kwargs):
         'order': ['view'],
         'notice': ['view'],
         'communication': ['view', 'add'],
+        'occurrence': ['view', 'add', 'change', 'delete'],
     }
 
     funcionarios_perms = {
@@ -68,6 +73,7 @@ def create_user_group_and_permissions(sender, **kwargs):
         'order': ['view', 'add', 'change'],
         'notice': ['view', 'add', 'change'],
         'communication': ['view', 'add', 'change'],
+        'occurrence': ['view', 'add', 'change', 'delete'],
     }
 
     administracao_perms = {
@@ -80,7 +86,8 @@ def create_user_group_and_permissions(sender, **kwargs):
         'vehicle': ['view', 'add', 'change', 'delete'],
         'order': ['view', 'add', 'change', 'delete'],
         'notice': ['view', 'add', 'change', 'delete'],
-        'communication': ['view', 'add', 'change', 'delete']
+        'communication': ['view', 'add', 'change', 'delete'],
+        'occurrence': ['view', 'add', 'change', 'delete'],
     }
 
     # Função para adicionar permissões a um grupo
