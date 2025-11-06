@@ -23,8 +23,8 @@ from .filters import (
     ReservationFilter, VisitorFilter, OrderFilter, CondominiumFilter, VisitFilter,
     queryset_filter_condominium, queryset_filter_apartment, queryset_filter_vehicle, queryset_filter_visitor,
     queryset_filter_visit, queryset_filter_reservation, queryset_filter_resident, queryset_filter_finance,
-    queryset_filter_order, queryset_filter_notice, queryset_filter_communication, NoticeFilter, ResidentFilter,
-    CommunicationFilter
+    queryset_filter_order, queryset_filter_notice, queryset_filter_communication, queryset_filter_occurrence,
+    NoticeFilter, ResidentFilter, CommunicationFilter
 )
 from .services import summarize_text
 
@@ -221,6 +221,19 @@ class NoticeViewSet(viewsets.ModelViewSet):
             )
 
         return Response({"summary": summary})
+
+
+class OccurrenceViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, DjangoModelPermissions]
+    serializer_class = CommunicationSerializer
+    filterset_class = CommunicationFilter
+    search_fields = ('description',)
+    ordering_fields = ('date_reported',)
+
+    def get_queryset(self):
+        user = self.request.user
+        query_base = Communication.objects.select_related('reported_by', 'condominium')
+        return queryset_filter_occurrence(query_base, user)
 
 
 class CommunicationViewSet(viewsets.ModelViewSet):

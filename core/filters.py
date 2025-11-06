@@ -156,6 +156,18 @@ def queryset_filter_communication(query_base, user):
         condominium_filter = Q(condominium=user.condominium)
         return query_base.filter(condominium_filter & user_is_participant).distinct()
 
+
+def queryset_filter_occurrence(query_base, user):
+    """Filtra o queryset conforme o tipo de usuário."""
+
+    # Se o usuário for administrador, retorna todos os registros da ocorrência que esteja no condomínio que ele gerencia
+    if user.user_type == "admin":
+        return query_base.filter(condominium__in=user.managed_condominiums.all())
+    elif user.user_type == "employee":# Se for funcionário, retorna todos os registros da ocorrência do condomínio do funcionário
+        return query_base.filter(condominium=user.condominium)
+    else: # Se for residente, retorna apenas os registros da ocorrência do apartamento do residente
+        return query_base.filter(reported_by=user)
+
 # Filtros para os ViewSets, usando django-filters para facilitar a filtragem via query parameters
 class ApartmentFilter(filters.FilterSet):
     number = filters.CharFilter(field_name='number', lookup_expr='iexact')
