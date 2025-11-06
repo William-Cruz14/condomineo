@@ -1,7 +1,7 @@
 from django_filters import rest_framework as filters
 from core.models import (
     Apartment, Vehicle, Finance, Reservation, Visitor, Order,
-    Condominium, Communication, Notice, Visit, Resident
+    Condominium, Communication, Notice, Visit, Resident, Occurrence
 )
 from django.db.models import Q
 
@@ -278,5 +278,17 @@ class ResidentFilter(filters.FilterSet):
     class Meta:
         model = Resident
         fields = ['name', 'apartment_number', 'condominium']
+
+
+
+class OccurrenceFilter(filters.FilterSet):
+    title = filters.CharFilter(field_name='title', lookup_expr='icontains')
+    status = filters.CharFilter(field_name='status', lookup_expr='iexact')
+    reported_by = filters.NumberFilter(field_name='reported_by')
+    condominium = filters.NumberFilter(field_name='condominium')
+
+    class Meta:
+        model = Occurrence
+        fields = ['title', 'status', 'reported_by', 'condominium']
 
 

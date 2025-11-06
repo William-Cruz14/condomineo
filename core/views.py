@@ -4,19 +4,18 @@ import docx
 import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
-from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated, IsAdminUser
+from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
 from .models import (
     Condominium, Visitor, Reservation, Apartment,
-    Vehicle, Finance, Order, Visit, Resident, Notice, Communication
+    Vehicle, Finance, Order, Visit, Resident, Notice, Communication, Occurrence
 )
 
 from .serializers import (
     VisitorSerializer, ReservationSerializer, ApartmentSerializer,
     VehicleSerializer, FinanceSerializer, OrderSerializer, VisitSerializer,
     CondominiumSerializer, ResidentSerializer,
-    NoticeSerializer, CommunicationSerializer
+    NoticeSerializer, CommunicationSerializer, OccurrenceSerializer
 )
 from .filters import (
     ApartmentFilter, VehicleFilter, FinanceFilter,
@@ -24,7 +23,7 @@ from .filters import (
     queryset_filter_condominium, queryset_filter_apartment, queryset_filter_vehicle, queryset_filter_visitor,
     queryset_filter_visit, queryset_filter_reservation, queryset_filter_resident, queryset_filter_finance,
     queryset_filter_order, queryset_filter_notice, queryset_filter_communication, queryset_filter_occurrence,
-    NoticeFilter, ResidentFilter, CommunicationFilter
+    NoticeFilter, ResidentFilter, CommunicationFilter, OccurrenceFilter
 )
 from .services import summarize_text
 
@@ -225,14 +224,14 @@ class NoticeViewSet(viewsets.ModelViewSet):
 
 class OccurrenceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
-    serializer_class = CommunicationSerializer
-    filterset_class = CommunicationFilter
+    serializer_class = OccurrenceSerializer
+    filterset_class = OccurrenceFilter
     search_fields = ('description',)
     ordering_fields = ('date_reported',)
 
     def get_queryset(self):
         user = self.request.user
-        query_base = Communication.objects.select_related('reported_by', 'condominium')
+        query_base = Occurrence.objects.select_related('reported_by', 'condominium')
         return queryset_filter_occurrence(query_base, user)
 
 
