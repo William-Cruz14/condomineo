@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from core.models import Apartment, Condominium
-from utils.validators import validate_cpf, validate_telephone, validate_email, validate_user_type
+from utils.validators import validator_cpf, validator_telephone, validator_email, validator_user_type
 from .models import Person
 
 
@@ -36,24 +36,17 @@ class PersonSerializer(serializers.ModelSerializer):
             return ApartmentSerializer(obj.apartment).data
         return None
 
-    def validate(self, data):
-        # Adicione validações personalizadas aqui, se necessário
-        cpf = data.get('cpf')
-        if cpf:
-            validate_cpf(data['cpf'])
+    def validate_telephone(self, telephone):
+        return validator_telephone(telephone)
 
-        telephone = data.get('telephone')
-        if telephone:
-            validate_telephone(data['telephone'])
+    def validate_email(self, email):
+        return validator_email(email)
 
-        email = data.get('email')
-        if email:
-            validate_email(data['email'])
+    def validate_cpf(self, cpf):
+        return validator_cpf(cpf)
 
-        user_type = data.get('user_type')
-        if user_type:
-            validate_user_type(data['user_type'])
-        return data
+    def validate_user_type(self, user_type):
+        return validator_user_type(user_type)
 
     def create(self, validated_data):
         # Pegando os dados do apartamento

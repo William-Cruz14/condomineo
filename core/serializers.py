@@ -7,8 +7,9 @@ from core.models import (
     Notice, Communication, Occurrence
 )
 from users.models import Person
-from .utils import get_condominium_to_code, get_apartment_number
-from utils.validators import validate_cpf, validate_telephone, validate_email, validate_apartment_and_condominium_fields
+from .utils import get_condominium_to_code, get_apartment_number, get_user_condo_apartment
+from utils.validators import validator_cpf, validator_telephone, validator_email, \
+    validate_apartment_and_condominium_fields, validator_value_finance
 
 
 class AddressSerializer(serializers.ModelSerializer):
@@ -132,35 +133,30 @@ class VisitorSerializer(serializers.ModelSerializer):
         )
 
     def validate(self, data):
-        # Validação personalizada para o campo CPF
-        cpf = data.get('cpf')
-        if cpf:
-            validate_cpf(data['cpf'])
+        user = getuser(self.context['request'])
 
-        # Validação personalizada para o campo telefone
-        telephone = data.get('telephone')
-        if telephone:
-            validate_telephone(data['telephone'])
+        if not self.instance:
+            # Ao criar, todos os campos são obrigatórios
+            validate_apartment_and_condominium_fields(user, data)
+
         return data
 
+    def validate_cpf(self, cpf):
+        validator_cpf(cpf)
+        return cpf
+
+    def validate_telephone(self, telephone):
+        validator_telephone(telephone)
+        return telephone
 
     def create(self, validated_data):
-        # Pega o usuário autenticado
-        user = self.context['request'].user
-        # Pega o código do condomínio dos dados validados
-        code_condominium = validated_data.pop('code_condominium', None)
-        # Busca o condomínio correspondente ao código fornecido
-        if code_condominium:
-            condominium = get_condominium_to_code(code_condominium)
-        else: # Se não for fornecido, usa o condomínio do usuário autenticado
-            condominium = user.condominium
-
+        user, condo, _ = get_user_condo_apartment(self.context, validated_data)
         # Formata o nome do visitante
         validated_data['name'] = validated_data['name'].title()
 
         # Cria a instância de Visitor associada ao condomínio encontrado
         visitor = Visitor.objects.create(
-            condominium=condominium,
+            condominium=condo,
             registered_by=user,
             **validated_data
         )
@@ -169,27 +165,20 @@ class VisitorSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         # Atualiza os campos do visitante
-        code_condominium = validated_data.pop('code_condominium', None)
-        if code_condominium:
-            condominium = get_condominium_to_code(code_condominium)
-            instance.condominium = condominium
-
         cpf = validated_data.get('cpf')
         if cpf:
-            validate_cpf(cpf)
             instance.cpf = cpf
 
         telephone = validated_data.get('telephone')
         if telephone:
-            validate_telephone(telephone)
             instance.telephone = telephone
 
         name = validated_data.get('name')
         if name:
             instance.name = name.title()
 
-        instance.save()
-        return instance
+
+        return super().update(instance, validated_data)
 
 class VisitSerializer(serializers.ModelSerializer):
     # O campo 'registered_by' é somente leitura, pois é preenchido automaticamente com o usuário autenticado
@@ -224,85 +213,60 @@ class VisitSerializer(serializers.ModelSerializer):
         )
 
     def validate(self, data):
-        # Validação personalizada para o campo CPF do visitante
-        cpf = data.get('cpf_visitor')
-        if cpf:
-            validate_cpf(cpf)
+        user = getuser(self.context['request'])
+        if not self.instance:
+            validate_apartment_and_condominium_fields(user, data)
+
         return data
 
-    def create(self, validated_data):
-        user = getuser(self.context['request'])
+    def validate_cpf(self, cpf):
+        validator_cpf(cpf)
+        return cpf
 
-        code_condominium = validated_data.pop('code_condominium', None)
-        # Busca o condomínio correspondente ao código fornecido
-        if code_condominium:
-            condominium = get_condominium_to_code(
-                code_condominium
-            )
-        else: # Se não for fornecido, usa o condomínio do usuário autenticado
-            condominium = user.condominium
+    def create(self, validated_data):
+        user, condo, apartment = get_user_condo_apartment(self.context, validated_data)
 
         # Buscar ou criar o visitante com base no nome,CPF e condomínio fornecidos
         name_visitor = validated_data.pop('name_visitor')
         cpf_visitor = validated_data.pop('cpf_visitor')
+
         visitor, _ = Visitor.objects.get_or_create(
-            condominium=condominium,
             name=name_visitor.title(),
             cpf=cpf_visitor,
-            registered_by=user
-        )
-
-        # Busca o apartamento com base no número, bloco e condomínio fornecidos
-        number_apartment = validated_data.pop('number_apartment')
-        block_apartment = validated_data.pop('block_apartment')
-        apartment = get_apartment_number(
-            condominium,
-            number_apartment,
-            block_apartment
+            registered_by=user,
+            condominium=condo
         )
 
         # Criar a visita associando-a ao visitante encontrado
         visit = Visit.objects.create(
-            condominium=condominium,
-            visitor=visitor,
+            condominium=condo,
             apartment=apartment,
+            visitor=visitor,
             registered_by=user,
             **validated_data
         )
         return visit
 
     def update(self, instance, validated_data):
-        number_apartment = validated_data.pop('number_apartment', None)
-        block_apartment = validated_data.pop('block_apartment', None)
-        code_condominium = validated_data.pop('code_condominium', None)
-
-        if code_condominium and number_apartment and block_apartment:
-            condominium = get_condominium_to_code(code_condominium)
-            apartment = get_apartment_number(
-                condominium,
-                number_apartment,
-                block_apartment
-            )
-            instance.apartment = apartment
+        user, _, apartment = get_user_condo_apartment(self.context, validated_data)
 
         name_visitor = validated_data.pop('name_visitor', None)
         cpf_visitor = validated_data.pop('cpf_visitor', None)
 
+        if apartment:
+            if user.apartment != apartment:
+                instance.apartment = apartment
+
         if name_visitor and cpf_visitor:
-            cpf = validate_cpf(cpf_visitor)
             visitor, _ = Visitor.objects.get_or_create(
                 condominium=instance.condominium,
                 name=name_visitor.title(),
-                cpf=cpf,
+                cpf=cpf_visitor,
                 registered_by=instance.registered_by
             )
             instance.visitor = visitor
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-
-        instance.save()
-        return instance
+        return super().update(instance, validated_data)
 
 class ReservationSerializer(serializers.ModelSerializer):
 
@@ -325,64 +289,32 @@ class ReservationSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         user = getuser(self.context['request'])
-        validate_apartment_and_condominium_fields(user, data)
+        if not self.instance:
+            validate_apartment_and_condominium_fields(user, data)
 
         return data
 
     def create(self, validated_data):
-        # Pega o usuário autenticado
-        user = getuser(self.context['request'])
-
-        # Determinando o condomínio da reserva
-        code_condominium = validated_data.pop('code_condominium', None)
-        if code_condominium:
-            condominium = get_condominium_to_code(code_condominium)
-        else:
-            condominium = user.condominium
-
-        # Determinar residente
-        if user.user_type == 'resident':
-            # Residente criando sua própria reserva
-            resident = user
-        else:
-            # Admin/employee criando para um residente
-            apartment_number = validated_data.pop('apartment_number')
-            apartment_block = validated_data.pop('apartment_block')
-            apartment = get_apartment_number(
-                condominium,
-                apartment_number,
-                apartment_block
-            )
-            resident = apartment.main_residents.first()
+        user, condo, apartment = get_user_condo_apartment(self.context, validated_data)
 
         # Criar a instância de Reservation associada ao residente encontrado
         reservation = Reservation.objects.create(
-            resident=resident,
-            condominium=condominium,
+            resident=apartment.main_residents.first(),
+            condominium=condo,
             **validated_data
         )
 
         return reservation
 
     def update(self, instance, validated_data):
-        apartment_number = validated_data.pop('apartment_number', None)
-        apartment_block = validated_data.pop('apartment_block', None)
-        code_condominium = validated_data.pop('code_condominium', None)
+        user, _, apartment = get_user_condo_apartment(self.context, validated_data)
 
-        if code_condominium and apartment_number and apartment_block:
-            condominium = get_condominium_to_code(code_condominium)
-            apartment = get_apartment_number(
-                condominium,
-                apartment_number,
-                apartment_block
-            )
-            resident = apartment.main_residents.first()
-            instance.resident = resident
+        if apartment:
+            if user.apartment != apartment:
+                instance.resident = apartment.main_residents.first()
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        return instance
+
+        return super().update(instance, validated_data)
 
 class FinanceSerializer(serializers.ModelSerializer):
     creator = PersonSerializer(read_only=True)
@@ -399,25 +331,20 @@ class FinanceSerializer(serializers.ModelSerializer):
             'id', 'creator', 'condominium'
         )
 
+    def validate_value(self, value):
+        validator_value_finance(value)
+        return value
+
     def create(self, validated_data):
-        # Pega o usuário autenticado
-        user = getuser(self.context['request'])
-        # Extrai o código do condomínio dos dados validados
-        code_condominium = validated_data.pop('condominium_code', None)
-        # Busca o condomínio correspondente ao código fornecido
-        if code_condominium:
-            condominium = get_condominium_to_code(code_condominium)
-        else: # Se não for fornecido, usa o condomínio do usuário autenticado
-            condominium = user.condominium
+        user , condo, _ = get_user_condo_apartment(self.context, validated_data)
 
         # Cria a instância de Finance associada ao condomínio encontrado
         finance = Finance.objects.create(
             creator=user,
-            condominium=condominium,
+            condominium=condo,
             **validated_data
         )
         return finance
-
 
     def update(self, instance, validated_data):
         # Aqui estou tratando a possível atualização do condomínio
@@ -426,11 +353,8 @@ class FinanceSerializer(serializers.ModelSerializer):
         if code_condominium:
             condominium = get_condominium_to_code(code_condominium)
             instance.condominium = condominium
-        # Atualiza os outros campos do Finance
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        return instance
+
+        return super().update(instance, validated_data)
 
 class ResidentSerializer(serializers.ModelSerializer):
     apartment = ApartmentSerializer(read_only=True)
@@ -456,47 +380,31 @@ class ResidentSerializer(serializers.ModelSerializer):
         )
 
     def validate(self, data):
-        # Validação personalizada para CPF e email
-        validate_cpf(data['cpf'])
-        validate_email(data['email'])
-
         user = self.context['request'].user
-
         # Se não for residente, exige dados do apartamento
-        validate_apartment_and_condominium_fields(user, data)
-
+        if not self.instance:
+            validate_apartment_and_condominium_fields(user, data)
         return data
 
+    def validate_cpf(self, value):
+        validator_cpf(value)
+        return value
+
+    def validate_email(self, value):
+        validator_email(value)
+        return value
+
+    def validate_phone(self, value):
+        validator_telephone(value)
+        return value
+
     def create(self, validated_data):
-        user = getuser(self.context['request'])
-
-        # Determinar condomínio
-        code_condominium = validated_data.pop('code_condominium', None)
-        if code_condominium:
-            condominium = get_condominium_to_code(code_condominium)
-        else:
-            condominium = user.condominium
-
-        # Determinar apartamento
-        if user.user_type == 'resident':
-            # Residente criando para seu próprio apartamento
-            apartment = user.apartment
-            validated_data.pop('apartment_number', None)
-            validated_data.pop('apartment_block', None)
-        else:
-            # Admin/employee especificando apartamento
-            apartment_number = validated_data.pop('apartment_number')
-            apartment_block = validated_data.pop('apartment_block')
-            apartment = get_apartment_number(
-                condominium,
-                apartment_number,
-                apartment_block
-            )
+        user, condo, apartment = get_user_condo_apartment(self.context, validated_data)
 
         # Criar residente
         resident = Resident.objects.create(
+            condominium=condo,
             apartment=apartment,
-            condominium=condominium,
             registered_by=user,
             **validated_data
         )
@@ -504,28 +412,17 @@ class ResidentSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         # Atualiza os campos do residente
-        code_condominium = validated_data.pop('code_condominium', None)
-        apartment_number = validated_data.pop('apartment_number', None)
-        apartment_block = validated_data.pop('apartment_block', None)
-
-        if code_condominium and apartment_number and apartment_block:
-            condominium = get_condominium_to_code(code_condominium)
-            apartment = get_apartment_number(
-                condominium,
-                apartment_number,
-                apartment_block
-            )
-            instance.apartment = apartment
-            instance.condominium = condominium
+        user, _, apartment = get_user_condo_apartment(self.context, validated_data)
+        if apartment:
+            if user.apartment != apartment:
+                instance.apartment = apartment
 
         cpf = validated_data.get('cpf')
         if cpf:
-            validate_cpf(cpf)
             instance.cpf = cpf
 
         email = validated_data.get('email')
         if email:
-            validate_email(email)
             instance.email = email
 
         name = validated_data.get('name')
@@ -536,8 +433,7 @@ class ResidentSerializer(serializers.ModelSerializer):
         if phone:
             instance.phone = phone
 
-        instance.save()
-        return instance
+        return super().update(instance, validated_data)
 
 class VehicleSerializer(serializers.ModelSerializer):
     # O campo 'registered_by' é somente leitura, pois é preenchido automaticamente com o usuário autenticado
@@ -561,56 +457,35 @@ class VehicleSerializer(serializers.ModelSerializer):
             'condominium',
         )
 
+    def validate(self, data):
+        user = self.context['request'].user
+        # Se não for residente, exige dados do apartamento
+        if not self.instance:
+            validate_apartment_and_condominium_fields(user, data)
+        return data
+
+
     def create(self, validated_data):
-        # Pega o usuário autenticado
-        user = getuser(self.context['request'])
-        # Buscar o apartamento com base no número e bloco fornecidos
-        code_condominium = validated_data.pop('code_condominium', None)
+        user, condo, apartment = get_user_condo_apartment(self.context, validated_data)
 
-        if code_condominium: # Se for fornecido, busca o condomínio correspondente ao código
-            condominium = get_condominium_to_code(code_condominium)
-        else: # Se não for fornecido, usa o condomínio do usuário autenticado
-            condominium = user.condominium
-
-        apartment_number = validated_data.pop('apartment_number')
-        apartment_block = validated_data.pop('apartment_block')
-        apartment = get_apartment_number(
-            condominium,
-            apartment_number,
-            apartment_block
-        )
-
-        # Obter o residente principal do apartamento para definir como proprietário do veículo
-        main_resident = apartment.main_residents.first()
-        # Criar o veículo associando-o ao residente principal e ao condomínio do apartamento
+        #Criar o veículo associando-o ao residente principal e ao responsável pelo registro
         vehicle = Vehicle.objects.create(
+            condominium=condo,
             registered_by=user,
-            owner=main_resident,
-            condominium=condominium,
+            owner=apartment.main_residents.first(),
             **validated_data
         )
         return vehicle
 
     def update(self, instance, validated_data):
-        apartment_number = validated_data.pop('apartment_number', None)
-        apartment_block = validated_data.pop('apartment_block', None)
-        code_condominium = validated_data.pop('code_condominium', None)
+        user, _, apartment = get_user_condo_apartment(self.context, validated_data)
 
-        if code_condominium and apartment_number and apartment_block:
-            condominium = get_condominium_to_code(code_condominium)
-            apartment = get_apartment_number(
-                condominium,
-                apartment_number,
-                apartment_block
-            )
-            main_resident = apartment.main_residents.first()
-            instance.owner = main_resident
-            instance.condominium = condominium
+        if apartment:
+            if user.apartment != apartment:
+                instance.owner = apartment.main_residents.first()
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        return instance
+
+        return super().update(instance, validated_data)
 
 class OccurrenceSerializer(serializers.ModelSerializer):
 
@@ -629,33 +504,24 @@ class OccurrenceSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('id', 'date_reported', 'condominium')
 
-    def create(self, validated_data):
-        user = getuser(self.context['request'])
+    def validate(self, data):
+        user = self.context['request'].user
+        # Se não for residente, exige dados do apartamento
+        if not self.instance:
+            validate_apartment_and_condominium_fields(user, data)
+        return data
 
-        code_condominium = validated_data.pop('code_condominium', None)
+    def create(self, validated_data):
+
         title = validated_data.pop('title', None)
         status = validated_data.pop('status', None)
 
         # Busca o condomínio correspondente ao código fornecido
-
-        apartment_number = validated_data.pop('apartment_number')
-        apartment_block = validated_data.pop('apartment_block')
-
-        if apartment_number and apartment_block and code_condominium:
-            condominium = get_condominium_to_code(code_condominium)
-            apartment = get_apartment_number(
-                condominium,
-                apartment_number,
-                apartment_block.upper()
-            )
-
-            validated_data['reported_by'] = apartment.main_residents.first()
-            validated_data['condominium'] = condominium
-        else:
-            validated_data['reported_by'] = user
-            validated_data['condominium'] = user.condominium
+        user, condo, apartment = get_user_condo_apartment(self.context, validated_data)
 
         occurrence = Occurrence.objects.create(
+            condominium=condo,
+            reported_by=apartment.main_residents.first(),
             title=title.title(),
             status=status.lower(),
             **validated_data
@@ -665,39 +531,22 @@ class OccurrenceSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
 
-        apartment_number = validated_data.pop('apartment_number', None)
-        apartment_block = validated_data.pop('apartment_block', None)
-        code_condominium = validated_data.pop('code_condominium', None)
+        user, _, apartment = get_user_condo_apartment(self.context, validated_data)
+        if apartment:
+            if user.apartment != apartment:
+                instance.reported_by = apartment.main_residents.first()
 
-        if code_condominium and apartment_number and apartment_block:
-            condominium = get_condominium_to_code(code_condominium)
-            apartment = get_apartment_number(
-                condominium,
-                apartment_number,
-                apartment_block
-            )
-            main_resident = apartment.main_residents.first()
-            instance.reported_by = main_resident
-            instance.condominium = condominium
-
-        for attr, value in validated_data.items():
-            if attr == 'title':
-                value = value.title()
-            if attr == 'status':
-                value = value.lower()
-            setattr(instance, attr, value)
-        instance.save()
-        return instance
-
+        return super().update(instance, validated_data)
 
 class OrderSerializer(serializers.ModelSerializer):
     # O campo 'registered_by' é somente leitura, pois é preenchido automaticamente com o usuário autenticado
     registered_by = PersonSerializer(read_only=True)
-    apartment_number = serializers.IntegerField(write_only=True)
-    apartment_block = serializers.CharField(write_only=True)
-    code_condominium = serializers.CharField(write_only=True)
     condominium = CondominiumSerializer(read_only=True)
     owner = PersonSerializer(read_only=True)
+
+    apartment_number = serializers.IntegerField(write_only=True, required=False)
+    apartment_block = serializers.CharField(write_only=True, required=False)
+    code_condominium = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = Order
@@ -707,56 +556,34 @@ class OrderSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('id', 'owner', 'registered_by', 'condominium')
 
+    def validate(self, data):
+        user = self.context['request'].user
+        # Se não for residente, exige dados do apartamento
+        if not self.instance:
+            validate_apartment_and_condominium_fields(user, data)
+        return data
+
     def create(self, validated_data):
         # Pega o usuário autenticado
-        user = getuser(self.context['request'])
+        user, condo, apartment = get_user_condo_apartment(self.context, validated_data)
 
-        code_condominium = validated_data.pop('code_condominium', None)
-        # Busca o condomínio correspondente ao código fornecido
-        if code_condominium:
-            condominium = get_condominium_to_code(code_condominium)
-        else: # Se não for fornecido, usa o condomínio do usuário autenticado
-            condominium = user.condominium
-
-        apartment_number = validated_data.pop('apartment_number')
-        apartment_block = validated_data.pop('apartment_block')
-        apartment = get_apartment_number(
-            condominium,
-            apartment_number,
-            apartment_block.upper()
-        )
-        # Obter o residente principal do apartamento para definir como proprietário do pedido
-        main_resident = apartment.main_residents.first()
         # Criar o pedido associando-o ao residente principal
         order = Order.objects.create(
-            condominium=condominium,
-            owner=main_resident,
+            condominium=condo,
+            owner=apartment.main_residents.first(),
             registered_by=user,
             **validated_data
         )
         return order
 
     def update(self, instance, validated_data):
+        user, _, apartment = get_user_condo_apartment(self.context, validated_data)
 
-        apartment_number = validated_data.pop('apartment_number', None)
-        apartment_block = validated_data.pop('apartment_block', None)
-        code_condominium = validated_data.pop('code_condominium', None)
+        if apartment:
+            if user.apartment != apartment:
+                instance.owner = apartment.main_residents.first()
 
-        if code_condominium and apartment_number and apartment_block:
-            condominium = get_condominium_to_code(code_condominium)
-            apartment = get_apartment_number(
-                condominium,
-                apartment_number,
-                apartment_block
-            )
-            main_resident = apartment.main_residents.first()
-            instance.owner = main_resident
-            instance.condominium = condominium
-
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        return instance
+        return super().update(instance, validated_data)
 
 class NoticeSerializer(serializers.ModelSerializer):
     author = PersonSerializer(read_only=True)
@@ -775,41 +602,24 @@ class NoticeSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
 
-        user = getuser(self.context['request'])
-
-        code_condominium = validated_data.pop('code_condominium', None)
-
-        # Busca o condomínio correspondente ao código fornecido
-        if code_condominium:
-            condominium = get_condominium_to_code(code_condominium)
-
-        else: # Se não for fornecido, usa o condomínio do usuário autenticado
-            condominium = user.condominium
+        user , condo, _ = get_user_condo_apartment(self.context, validated_data)
 
         validated_data['title'] = validated_data['title'].title()
 
         # Cria a instância de Notice associada ao condomínio encontrado
         notice = Notice.objects.create(
-            condominium=condominium,
+            condominium=condo,
             author=user,
             **validated_data
         )
         return notice
 
     def update(self, instance, validated_data):
-        code_condominium = validated_data.pop('code_condominium', None)
+        title = validated_data.get('title')
+        if title:
+            instance.title = title.title()
 
-        if code_condominium:
-            condominium = get_condominium_to_code(code_condominium)
-            instance.condominium = condominium
-
-        for attr, value in validated_data.items():
-            if attr == 'title':
-                value = value.title()
-            setattr(instance, attr, value)
-
-        instance.save()
-        return instance
+        return super().update(instance, validated_data)
 
 
 class CommunicationSerializer(serializers.ModelSerializer):
@@ -831,6 +641,13 @@ class CommunicationSerializer(serializers.ModelSerializer):
         read_only_fields = (
             'id', 'created_at', 'sender', 'recipients', 'condominium'
         )
+
+    def validate(self, data):
+        user = self.context['request'].user
+        # Se não for residente, exige dados do apartamento
+        if not self.instance:
+            validate_apartment_and_condominium_fields(user, data)
+        return data
 
     def create(self, validated_data):
         user = getuser(self.context['request'])
@@ -902,14 +719,13 @@ class CommunicationSerializer(serializers.ModelSerializer):
             recipients_qs = apartment.main_residents.all()
             instance.recipients.set(recipients_qs)
 
-        title = validated_data.get('title')
+        title = validated_data.pop('title')
         if title:
             instance.title = title.title()
 
-        message = validated_data.get('message')
+        message = validated_data.pop('message')
         if message:
             instance.message = message
 
-        instance.save()
-        return instance
+        return super().update(instance, validated_data)
 

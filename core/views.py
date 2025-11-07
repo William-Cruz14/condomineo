@@ -221,7 +221,6 @@ class NoticeViewSet(viewsets.ModelViewSet):
 
         return Response({"summary": summary})
 
-
 class OccurrenceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
     serializer_class = OccurrenceSerializer

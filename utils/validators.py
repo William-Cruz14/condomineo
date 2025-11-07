@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-def validate_cpf(value):
+def validator_cpf(value):
     """
     Validando o número do CPF.
     """
@@ -13,7 +13,7 @@ def validate_cpf(value):
     return value
 
 
-def validate_telephone(value):
+def validator_telephone(value):
     """
     Validando o número de telefone.
     """
@@ -27,7 +27,7 @@ def validate_telephone(value):
     return value
 
 
-def validate_email(value):
+def validator_email(value):
     """
     Validando o formato do e-mail.
     """
@@ -38,7 +38,7 @@ def validate_email(value):
     return value
 
 
-def validate_user_type(value):
+def validator_user_type(value):
     """
     Validando o tipo de usuário.
     """
@@ -49,20 +49,29 @@ def validate_user_type(value):
 
     return value
 
+def validator_value_finance(value):
+    """
+    Validando o valor financeiro.
+    """
+    if value < 0:
+        raise serializers.ValidationError("O valor financeiro não pode ser negativo.")
+
+    return value
+
 
 def validate_apartment_and_condominium_fields(user, data):
     """
     Valida campos obrigatórios de apartamento e condomínio baseado no tipo de usuário.
     """
-    if user.user_type != 'resident':
+    if user.user_type == "employee":
         if not data.get('apartment_number') or not data.get('apartment_block'):
             raise serializers.ValidationError(
-                "Para funcionários e administradores, os campos 'apartment_number' e "
+                "Para funcionários os campos 'apartment_number' e "
                 "'apartment_block' são obrigatórios."
             )
 
-    if user.user_type == 'admin':
-        if not data.get('code_condominium'):
+    if user.user_type == "admin":
+        if not data.get("code_condominium") and not data.get("apartment_number") and not data.get("apartment_block"):
             raise serializers.ValidationError(
                 "Para administradores, o campo 'code_condominium' é obrigatório."
             )
