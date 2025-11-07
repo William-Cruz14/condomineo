@@ -1,27 +1,29 @@
 # Estágio de build
 FROM python:3.11-slim
 
-# Metadados do mantenedor
 LABEL authors="william"
 
-# Define o diretório de trabalho
 WORKDIR /app
 
-# Define variáveis de ambiente
-ENV PYTHONUNBUFFERED 1
-ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
-# Copia o arquivo de dependências
+# Instala dependências do sistema (úteis para compilar uWSGI)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copia e instala dependências Python
 COPY requirements.txt .
-
-# Instala as dependências
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia todos os arquivos do projeto
+# Copia o restante do projeto
 COPY . .
-# Expõe a porta 8000
+
+# Expõe a porta usada pelo uWSGI
 EXPOSE 8000
 
-# Comando para rodar a aplicação
-CMD ["sh", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && python manage.py runserver 0.0.0.0:8000"]
+# Comando de inicialização
+CMD ["sh", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && uwsgi --ini uwsgi.ini"]
