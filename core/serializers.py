@@ -636,7 +636,7 @@ class CommunicationSerializer(serializers.ModelSerializer):
         model = Communication
         fields = (
             'id', 'title', 'message', 'created_at', 'apartment_number', 'apartment_block',
-            'sender', 'recipients', 'condominium', 'code_condominium'
+            'sender', 'recipients', 'condominium', 'code_condominium', 'communication_type'
         )
         read_only_fields = (
             'id', 'created_at', 'sender', 'recipients', 'condominium'
