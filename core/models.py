@@ -484,12 +484,23 @@ class Notice(models.Model):
 
 
 class Communication(models.Model):
+    class CommunicationTypeChoices(models.TextChoices):
+        NOTICE = 'notice', 'Notice'
+        MESSAGE = 'message', 'Message'
+
     # Definindo os campos do modelo
     condominium = models.ForeignKey(
         'core.Condominium',
         on_delete=models.CASCADE,
         related_name='communications',
         verbose_name='Condomínio'
+    )
+    communication_type = models.CharField(
+        max_length=20,
+        choices=CommunicationTypeChoices.choices,
+        default=CommunicationTypeChoices.MESSAGE,
+        verbose_name='Tipo de Comunicação',
+        help_text='Selecione o tipo de comunicação.'
     )
     title = models.CharField(max_length=255, verbose_name='Título')
     message = models.TextField(verbose_name='Mensagem')

@@ -244,11 +244,12 @@ class CondominiumFilter(filters.FilterSet):
 class CommunicationFilter(filters.FilterSet):
     subject = filters.CharFilter(field_name='subject', lookup_expr='icontains')
     sender = filters.NumberFilter(field_name='sender')
+    communication_type = filters.CharFilter(field_name='communication_type', lookup_expr='iexact')
     condominium = filters.NumberFilter(field_name='condominium')
 
     class Meta:
         model = Communication
-        fields = ['subject', 'sender', 'condominium']
+        fields = ['subject', 'sender', 'condominium', 'communication_type']
 
 
 class NoticeFilter(filters.FilterSet):
