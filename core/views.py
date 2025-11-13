@@ -25,7 +25,7 @@ from .filters import (
     queryset_filter_order, queryset_filter_notice, queryset_filter_communication, queryset_filter_occurrence,
     NoticeFilter, ResidentFilter, CommunicationFilter, OccurrenceFilter
 )
-from .services import summarize_text
+from core.services_ia import summarize_text
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class VisitorViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        query_base = Visitor.objects.select_related('condominium', 'registered_by', 'apartment')
+        query_base = Visitor.objects.select_related('condominium', 'registered_by')
         return queryset_filter_visitor(query_base, user)
 
 

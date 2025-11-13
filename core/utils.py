@@ -24,24 +24,26 @@ def get_apartment_number(condominium, number, block):
 def pop_apartment_and_condominium(validated_data):
     """Extrai e retorna o apartamento e condomínio dos dados fornecidos."""
     code_condominium = validated_data.pop('code_condominium', None)
-    apartment_number = validated_data.pop('apartment_number', None)
-    apartment_block = validated_data.pop('apartment_block', None)
+    apartment_number = validated_data.pop('number_apartment', None)
+    apartment_block = validated_data.pop('block_apartment', None)
     return code_condominium, apartment_number, apartment_block
 
 def get_user_condo_apartment(context, validated_data):
 
     user = getuser(context['request'])
-    condominium = None
-    apartment = None
 
     code, apt_number, apt_block = pop_apartment_and_condominium(validated_data)
 
     if code and apt_number and apt_block:
         condominium = get_condominium_to_code(code)
         apartment = get_apartment_number(condominium, apt_number, apt_block)
+        print(condominium.code_condominium)
+        print(apartment.number)
     else :
         condominium = user.condominium
         apartment = user.apartment
+        print(condominium.code_condominium)
+        print(apartment.number)
 
     return user, condominium, apartment
 

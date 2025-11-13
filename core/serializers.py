@@ -155,7 +155,7 @@ class VisitorSerializer(serializers.ModelSerializer):
         validated_data['name'] = validated_data['name'].title()
 
         # Cria a instância de Visitor associada ao condomínio encontrado
-        visitor = Visitor.objects.create(
+        visitor = Visitor.objects.get_or_create(
             condominium=condo,
             registered_by=user,
             **validated_data

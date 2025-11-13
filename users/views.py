@@ -8,6 +8,15 @@ from utils.utils import send_custom_email
 from .filters import queryset_filter_person, PersonFilterSet
 from .models import Person
 from .serializers import PersonSerializer
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from dj_rest_auth.registration.views import SocialLoginView
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+
+class CustomOAuth2Client(OAuth2Client):
+    def __init__(self, *args, **kwargs):
+        # Evita erro de múltiplos valores para 'scope_delimiter'
+        kwargs.pop("scope_delimiter", None)
+        super().__init__(*args, **kwargs)
 
 class PersonView(ModelViewSet):
     serializer_class = PersonSerializer
@@ -106,3 +115,8 @@ class PersonView(ModelViewSet):
 
         return Response(serializer.data)
 
+
+class GoogleLogin(SocialLoginView):
+    adapter_class = GoogleOAuth2Adapter
+    client_class = OAuth2Client
+    callback_url = "localhost:3000"

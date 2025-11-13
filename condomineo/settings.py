@@ -34,12 +34,11 @@ CSRF_TRUSTED_ORIGINS = [o.strip() for o in config('CSRF_TRUSTED_ORIGINS', defaul
 
 # Application definition
 INSTALLED_APPS = [
+    # Tema do admin 'Unfold'
     'unfold',
     'unfold.contrib.forms',
-    'rest_framework_simplejwt',
-    'dj_rest_auth',
-    'allauth',
-    'allauth.account',
+
+    'django.contrib.sites',
     'corsheaders',
     'django.contrib.auth',
     'django.contrib.admin',
@@ -55,10 +54,20 @@ INSTALLED_APPS = [
     'django_filters',
     'rest_framework',
     'rest_framework.authtoken',
-
+    'rest_framework_simplejwt',
+    # Autenticação social com django-allauth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    # Autenticação via API com dj-rest-auth
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
 ]
 
 SITE_ID = 1
+
+
 
 UNFOLD = {
     "SITE_LOGO": {
@@ -102,11 +111,12 @@ UNFOLD = {
 
 REST_AUTH = {
     'USE_JWT': True,
+    'USER_DETAILS_SERIALIZER': 'users.serializers.CustomUserDetailsSerializer',
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # 1 hora
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # 7 dias
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': True,
@@ -114,10 +124,31 @@ SIMPLE_JWT = {
 # Configurações do django-allauth
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_ADAPTER = 'users.adapters.SocialAccountAdapter'
 
+# Configurações do provedor Google para django-allauth
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'offline',
+        },
+    }
+}
+
+GOOGLE_RECAPTCHA_SECRET_KEY = config('GOOGLE_RECAPTCHA_SECRET_KEY', default='')
+
+# Configurações do Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -200,7 +231,7 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# Database
+# Databases
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 # Se modo DEBUG for True, use o banco de dados local
 if DEBUG:
@@ -221,6 +252,11 @@ else:
             conn_max_age=600,
         )
     }
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
 
 
 # Password validation
@@ -267,7 +303,7 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 #Configurações para servir arquivos estáticos com WhiteNoise
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-STATIC_URL = '/static/'
+STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
