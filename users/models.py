@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import AbstractUser, BaseUserManager, Group
 from django.db import models
+from rest_framework import validators
 from rest_framework.serializers import ValidationError
 
 # CustomUserManager para gerenciar a criação de usuários e superusuários
@@ -12,7 +13,7 @@ class CustomPersonManager(BaseUserManager):
         extra_fields.pop('is_active', None)
         user = self.model(email=email, name=name, **extra_fields)
         user.set_password(password)
-        if extra_fields.get('user_type') == 'admin':
+        if extra_fields.get('user_type') == 'admin' or extra_fields.get('is_superuser'):
             user.is_active = True
         else:
             user.is_active = False
@@ -68,12 +69,13 @@ class Person(AbstractUser):
         help_text='Condomínio associado ao funcionário ou morador.'
     )
 
-    apartment = models.ForeignKey(
+    apartment = models.OneToOneField(
         'core.Apartment',
-        related_name='main_residents',
+        related_name='main_resident',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        unique=True,
         verbose_name='Apartamento',
         help_text= 'Selecione o apartamento associado ao morador.'
     )
@@ -116,6 +118,11 @@ class Person(AbstractUser):
 
         if self.user_type == "employee" and not self.position:
             raise ValidationError("Funcionários devem ter um cargo definido.")
+
+        if self.user_type == "admin" and self.is_superuser == False:
+            if self.pk and self.managed_condominiums.count() == 0:
+                raise ValidationError("Administradores devem gerenciar pelo menos um condomínio.")
+
 
     def approve_person(self):
         """Aprova o usuário, ativando sua conta."""

@@ -1,10 +1,23 @@
 from unfold.forms import UserCreationForm as UnfoldUserCreationForm
 from .models import Person
+from django import forms
 
 class PersonCreationForm(UnfoldUserCreationForm):
     class Meta:
         model = Person
         fields = ('email', 'name', 'user_type', 'cpf', 'apartment', 'position', 'condominium', 'managed_condominiums')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        cpf = cleaned_data.get('cpf')
+        if cpf and Person.objects.filter(cpf=cpf).exists():
+            raise forms.ValidationError('Um usuário com este CPF já existe.')
+
+        managed_condominiums = cleaned_data.get('managed_condominiums')
+        if not managed_condominiums or len(managed_condominiums) == 0:
+            raise forms.ValidationError('Pelo menos um condomínio deve ser selecionado para gerenciamento.')
+
+        return cleaned_data
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

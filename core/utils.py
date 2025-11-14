@@ -37,13 +37,9 @@ def get_user_condo_apartment(context, validated_data):
     if code and apt_number and apt_block:
         condominium = get_condominium_to_code(code)
         apartment = get_apartment_number(condominium, apt_number, apt_block)
-        print(condominium.code_condominium)
-        print(apartment.number)
     else :
         condominium = user.condominium
         apartment = user.apartment
-        print(condominium.code_condominium)
-        print(apartment.number)
 
     return user, condominium, apartment
 

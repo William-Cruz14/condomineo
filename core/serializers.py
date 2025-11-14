@@ -275,14 +275,14 @@ class ReservationSerializer(serializers.ModelSerializer):
     condominium = CondominiumSerializer(read_only=True)
 
     code_condominium = serializers.CharField(write_only=True, required=False)
-    apartment_number = serializers.CharField(write_only=True, required=False)
-    apartment_block = serializers.CharField(write_only=True, required=False)
+    number_apartment = serializers.IntegerField(write_only=True, required=False)
+    block_apartment = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = Reservation
         fields = (
             'id', 'resident', 'space', 'start_time', 'end_time',
-            'condominium', 'code_condominium', 'apartment_number', 'apartment_block'
+            'condominium', 'code_condominium', 'number_apartment', 'block_apartment'
         )
         read_only_fields = ('id', 'resident', 'condominium')
 
@@ -299,7 +299,7 @@ class ReservationSerializer(serializers.ModelSerializer):
 
         # Criar a instância de Reservation associada ao residente encontrado
         reservation = Reservation.objects.create(
-            resident=apartment.main_residents.first(),
+            resident=apartment.main_resident,
             condominium=condo,
             **validated_data
         )
@@ -311,7 +311,7 @@ class ReservationSerializer(serializers.ModelSerializer):
 
         if apartment:
             if user.apartment != apartment:
-                instance.resident = apartment.main_residents.first()
+                instance.resident = apartment.main_resident.first()
 
 
         return super().update(instance, validated_data)
@@ -363,8 +363,8 @@ class ResidentSerializer(serializers.ModelSerializer):
 
     # Campos opcionais para administradores/funcionários
     code_condominium = serializers.CharField(write_only=True, required=False)
-    apartment_number = serializers.IntegerField(write_only=True, required=False)
-    apartment_block = serializers.CharField(write_only=True, required=False)
+    number_apartment = serializers.IntegerField(write_only=True, required=False)
+    block_apartment = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = Resident
@@ -372,7 +372,7 @@ class ResidentSerializer(serializers.ModelSerializer):
             'id', 'name', 'cpf', 'email', 'phone',
             'condominium', 'apartment',
             'registered_by', 'created_at',
-            'code_condominium', 'apartment_number', 'apartment_block'
+            'code_condominium', 'number_apartment', 'block_apartment'
         )
         read_only_fields = (
             'id', 'registered_by', 'apartment',
@@ -437,8 +437,8 @@ class ResidentSerializer(serializers.ModelSerializer):
 
 class VehicleSerializer(serializers.ModelSerializer):
     # O campo 'registered_by' é somente leitura, pois é preenchido automaticamente com o usuário autenticado
-    apartment_number = serializers.IntegerField(write_only=True)
-    apartment_block = serializers.CharField(write_only=True)
+    number_apartment = serializers.IntegerField(write_only=True)
+    block_apartment = serializers.CharField(write_only=True)
     code_condominium = serializers.CharField(write_only=True)
     condominium = CondominiumSerializer(read_only=True)
     owner = PersonSerializer(read_only=True)
@@ -448,7 +448,7 @@ class VehicleSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'registered_by', 'plate',
             'model', 'color', 'owner', 'condominium',
-            'code_condominium', 'apartment_number', 'apartment_block'
+            'code_condominium', 'number_apartment', 'block_apartment'
         )
         read_only_fields = (
             'id',
@@ -472,7 +472,7 @@ class VehicleSerializer(serializers.ModelSerializer):
         vehicle = Vehicle.objects.create(
             condominium=condo,
             registered_by=user,
-            owner=apartment.main_residents.first(),
+            owner=apartment.main_resident.first(),
             **validated_data
         )
         return vehicle
@@ -482,7 +482,7 @@ class VehicleSerializer(serializers.ModelSerializer):
 
         if apartment:
             if user.apartment != apartment:
-                instance.owner = apartment.main_residents.first()
+                instance.owner = apartment.main_resident.first()
 
 
         return super().update(instance, validated_data)
@@ -490,8 +490,8 @@ class VehicleSerializer(serializers.ModelSerializer):
 class OccurrenceSerializer(serializers.ModelSerializer):
 
     condominium = CondominiumSerializer(read_only=True)
-    apartment_number = serializers.IntegerField(write_only=True)
-    apartment_block = serializers.CharField(write_only=True)
+    number_apartment = serializers.IntegerField(write_only=True)
+    block_apartment = serializers.CharField(write_only=True)
     code_condominium = serializers.CharField(write_only=True)
     reported_by = PersonSerializer(read_only=True)
 
@@ -500,7 +500,7 @@ class OccurrenceSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'title', 'description', 'status',
             'date_reported', 'condominium', 'reported_by',
-            'apartment_number', 'apartment_block', 'code_condominium'
+            'number_apartment', 'block_apartment', 'code_condominium'
         )
         read_only_fields = ('id', 'date_reported', 'condominium')
 
@@ -521,7 +521,7 @@ class OccurrenceSerializer(serializers.ModelSerializer):
 
         occurrence = Occurrence.objects.create(
             condominium=condo,
-            reported_by=apartment.main_residents.first(),
+            reported_by=apartment.main_resident.first(),
             title=title.title(),
             status=status.lower(),
             **validated_data
@@ -534,7 +534,7 @@ class OccurrenceSerializer(serializers.ModelSerializer):
         user, _, apartment = get_user_condo_apartment(self.context, validated_data)
         if apartment:
             if user.apartment != apartment:
-                instance.reported_by = apartment.main_residents.first()
+                instance.reported_by = apartment.main_resident.first()
 
         return super().update(instance, validated_data)
 
@@ -544,15 +544,15 @@ class OrderSerializer(serializers.ModelSerializer):
     condominium = CondominiumSerializer(read_only=True)
     owner = PersonSerializer(read_only=True)
 
-    apartment_number = serializers.IntegerField(write_only=True, required=False)
-    apartment_block = serializers.CharField(write_only=True, required=False)
+    number_apartment = serializers.IntegerField(write_only=True, required=False)
+    block_apartment = serializers.CharField(write_only=True, required=False)
     code_condominium = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = Order
         fields = (
             'id', 'order_code', 'status', 'code_condominium', 'condominium',
-            'signature_image', 'registered_by', 'owner', 'apartment_number', 'apartment_block'
+            'signature_image', 'registered_by', 'owner', 'number_apartment', 'block_apartment'
         )
         read_only_fields = ('id', 'owner', 'registered_by', 'condominium')
 
@@ -570,7 +570,7 @@ class OrderSerializer(serializers.ModelSerializer):
         # Criar o pedido associando-o ao residente principal
         order = Order.objects.create(
             condominium=condo,
-            owner=apartment.main_residents.first(),
+            owner=apartment.main_resident.first(),
             registered_by=user,
             **validated_data
         )
@@ -581,7 +581,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
         if apartment:
             if user.apartment != apartment:
-                instance.owner = apartment.main_residents.first()
+                instance.owner = apartment.main_resident.first()
 
         return super().update(instance, validated_data)
 
@@ -629,13 +629,13 @@ class CommunicationSerializer(serializers.ModelSerializer):
 
     # Campos para administradores/funcionários enviarem para apartamentos
     code_condominium = serializers.CharField(write_only=True, required=False)
-    apartment_number = serializers.IntegerField(write_only=True, required=False)
-    apartment_block = serializers.CharField(write_only=True, required=False)
+    number_apartment = serializers.IntegerField(write_only=True, required=False)
+    block_apartment = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = Communication
         fields = (
-            'id', 'title', 'message', 'created_at', 'apartment_number', 'apartment_block',
+            'id', 'title', 'message', 'created_at', 'number_apartment', 'block_apartment',
             'sender', 'recipients', 'condominium', 'code_condominium', 'communication_type'
         )
         read_only_fields = (
@@ -653,8 +653,8 @@ class CommunicationSerializer(serializers.ModelSerializer):
         user = getuser(self.context['request'])
 
         code_condominium = validated_data.pop('code_condominium', None)
-        apartment_number = validated_data.pop('apartment_number', None)
-        apartment_block = validated_data.pop('apartment_block', None)
+        apartment_number = validated_data.pop('number_apartment', None)
+        apartment_block = validated_data.pop('block_apartment', None)
 
         # Determina o condomínio
         if code_condominium:
@@ -671,7 +671,7 @@ class CommunicationSerializer(serializers.ModelSerializer):
                     apartment_number,
                     apartment_block
                 )
-                recipients_qs = apartment.main_residents.all()
+                recipients_qs = apartment.main_resident.all()
             else:
                 # Morador envia para a administração
                 admins = Person.objects.filter(
@@ -690,7 +690,7 @@ class CommunicationSerializer(serializers.ModelSerializer):
                 apartment_number,
                 apartment_block
             )
-            recipients_qs = apartment.main_residents.all()
+            recipients_qs = apartment.main_resident.all()
 
         communication = Communication.objects.create(
             condominium=condominium,
@@ -703,12 +703,12 @@ class CommunicationSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         code_condominium = validated_data.pop('code_condominium', None)
-        apartment_number = validated_data.pop('apartment_number', None)
-        apartment_block = validated_data.pop('apartment_block', None)
+        apartment_number = validated_data.pop('number_apartment', None)
+        apartment_block = validated_data.pop('block_apartment', None)
 
         if code_condominium:
-            condominium = get_condominium_to_code(code_condominium)
-            instance.condominium = condominium
+                condominium = get_condominium_to_code(code_condominium)
+                instance.condominium = condominium
 
         if apartment_number and apartment_block:
             apartment = get_apartment_number(
@@ -716,7 +716,7 @@ class CommunicationSerializer(serializers.ModelSerializer):
                 apartment_number,
                 apartment_block
             )
-            recipients_qs = apartment.main_residents.all()
+            recipients_qs = apartment.main_resident.all()
             instance.recipients.set(recipients_qs)
 
         title = validated_data.pop('title')

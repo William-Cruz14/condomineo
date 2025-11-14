@@ -1,6 +1,10 @@
 from rest_framework import serializers
 from core.models import Apartment, Condominium
-from utils.validators import validator_cpf, validator_telephone, validator_email, validator_user_type
+from core.utils import get_user_condo_apartment
+from utils.validators import (
+    validator_cpf, validator_telephone, validator_email, validator_user_type,
+    validate_apartment_and_condominium_fields,
+)
 from .models import Person
 
 
@@ -56,74 +60,52 @@ class PersonSerializer(serializers.ModelSerializer):
         return validator_user_type(user_type)
 
     def validate(self, data):
-        token = data.pop('recaptcha_token')
-        from users.services import verificar_recaptcha
-        success, message = verificar_recaptcha(token)
-        if not success:
-            raise serializers.ValidationError({'recaptcha_token': message})
+        is_creating = self.instance is None
+        if is_creating:
+            token = data.pop('recaptcha_token')
+            if token:
+                from users.services import verificar_recaptcha
+                success, message = verificar_recaptcha(token)
+                if not success:
+                    raise serializers.ValidationError({'recaptcha_token': message})
+
         return super().validate(data)
 
     def create(self, validated_data):
-        # Pegando os dados do apartamento
-        apartment_number = validated_data.pop('apartment_number', None)
-        apartment_block = validated_data.pop('apartment_block', None)
+        _, condo, apartment = get_user_condo_apartment(self.context, validated_data)
 
-        # Guardando o condomínio antes de criar o usuário
-        condominium = validated_data.pop('condominium')
+        validated_data['name'] = validated_data['name'].title()
 
-        name = validated_data.pop('name').title()
+        if apartment:
+            # Atualiza a situação do apartamento para 'ocupado' se foi criado agora
+            if apartment.occupation != 'occupied':
+                apartment.occupation = 'occupied'
+                apartment.save()
 
-       # Pegando os dados do apartamento
-        if apartment_number and apartment_block and condominium:
-            try:
-                apartment_block = apartment_block.upper().strip()
-
-                apt_instance, created = Apartment.objects.get_or_create(
-                    number=apartment_number,
-                    block=apartment_block,
-                    condominium=condominium
-                )
-
-                # Atualizando a situação do apartamento para 'ocupado' se foi criado agora
-                if created:
-                    apt_instance.occupation = 'occupied'
-                    apt_instance.save()
-
-                person = Person.objects.create_user(
-                    apartment=apt_instance,
-                    condominium=condominium,
-                    name=name,
-                    **validated_data
-                )
-            except Apartment.DoesNotExist:
-                raise serializers.ValidationError(
-                    f"Apartamento não encontrado com número {apartment_number}, "
-                    f"bloco {apartment_block} no condomínio especificado."
-                )
-
+            person = Person.objects.create_user(
+                apartment=apartment,
+                condominium=condo,
+                **validated_data
+            )
         else:
             person = Person.objects.create_user(
-                name=name,
-                condominium=condominium,
+                condominium=condo,
                 **validated_data
             )
 
         return person
 
     def update(self, instance, validated_data):
+        _, _, apartment = get_user_condo_apartment(self.context, validated_data)
 
-        validated_data.pop('apartment_number', None)
-        validated_data.pop('apartment_block', None)
+        if apartment and instance.apartment != apartment:
+            instance.apartment = apartment
 
         password = validated_data.pop('password', None)
-
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
         if password:
             instance.set_password(password)
-        instance.save()
 
-        return instance
+        return super().update(instance, validated_data)
 
 
 
