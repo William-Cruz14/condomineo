@@ -111,13 +111,13 @@ class Person(AbstractUser):
     def clean(self):
         super().clean()
         if self.user_type == "resident" and not self.apartment:
-            raise ValidationError('Moradores devem ter um apartamento associado.')
+            return ValidationError('Moradores devem ter um apartamento associado.')
 
         if self.user_type in ["resident", "employee"] and not self.condominium:
-            raise ValidationError("Usuários que não são administradores devem ter um condomínio associado.")
+            return ValidationError("Usuários que não são administradores devem ter um condomínio associado.")
 
         if self.user_type == "employee" and not self.position:
-            raise ValidationError("Funcionários devem ter um cargo definido.")
+            return ValidationError("Funcionários devem ter um cargo definido.")
 
         if self.user_type == "admin" and self.is_superuser == False:
             if self.pk and self.managed_condominiums.count() == 0:

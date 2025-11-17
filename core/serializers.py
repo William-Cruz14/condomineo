@@ -1,3 +1,4 @@
+from django.db.models import QuerySet
 from rest_framework import serializers
 from users.serializers import PersonSerializer
 from .filters import getuser
@@ -72,7 +73,6 @@ class CondominiumSerializer(serializers.ModelSerializer):
             **validated_data
         )
 
-        user.managed_condominiums.add(condominium)
         return condominium
 
     def update(self, instance, validated_data):
@@ -167,15 +167,15 @@ class VisitorSerializer(serializers.ModelSerializer):
         # Atualiza os campos do visitante
         cpf = validated_data.get('cpf')
         if cpf:
-            instance.cpf = cpf
+            validated_data['cpf'] = cpf
 
         telephone = validated_data.get('telephone')
         if telephone:
-            instance.telephone = telephone
+            validated_data['telephone'] = telephone
 
         name = validated_data.get('name')
         if name:
-            instance.name = name.title()
+            validated_data['name'] = name.title()
 
 
         return super().update(instance, validated_data)
@@ -622,110 +622,117 @@ class NoticeSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
+# Communication Serializer
 class CommunicationSerializer(serializers.ModelSerializer):
     sender = PersonSerializer(read_only=True)
     recipients = PersonSerializer(many=True, read_only=True)
     condominium = CondominiumSerializer(read_only=True)
 
-    # Campos para administradores/funcionários enviarem para apartamentos
     code_condominium = serializers.CharField(write_only=True, required=False)
     number_apartment = serializers.IntegerField(write_only=True, required=False)
     block_apartment = serializers.CharField(write_only=True, required=False)
+    all_residents = serializers.BooleanField(write_only=True, required=False, default=False)
 
     class Meta:
         model = Communication
         fields = (
             'id', 'title', 'message', 'created_at', 'number_apartment', 'block_apartment',
-            'sender', 'recipients', 'condominium', 'code_condominium', 'communication_type'
+            'sender', 'recipients', 'condominium', 'code_condominium', 'communication_type',
+            'all_residents'
         )
-        read_only_fields = (
-            'id', 'created_at', 'sender', 'recipients', 'condominium'
-        )
+        read_only_fields = ('id', 'created_at', 'sender', 'recipients', 'condominium')
 
     def validate(self, data):
-        user = self.context['request'].user
-        # Se não for residente, exige dados do apartamento
+        user = getuser(self.context['request'])
         if not self.instance:
-            validate_apartment_and_condominium_fields(user, data)
+            if user.user_type == 'admin':
+                if not data.get('code_condominium'):
+                    raise serializers.ValidationError('O código do condomínio é obrigatório para administradores.')
+
+                if data.get('communication_type') == Communication.CommunicationTypeChoices.NOTICE:
+                    if data.get('all_residents') and data.get('all_residents') is False:
+                        raise serializers.ValidationError(
+                            'O número do apartamento e bloco são obrigatórios se "all_residents" não for True.'
+                        )
+
+                if data.get('communication_type') == Communication.CommunicationTypeChoices.MESSAGE:
+                    if not data.get('number_apartment') or not data.get('block_apartment'):
+                        raise serializers.ValidationError('Número e bloco do apartamento são obrigatórios para mensagens.')
+
         return data
 
     def create(self, validated_data):
-        user = getuser(self.context['request'])
 
-        code_condominium = validated_data.pop('code_condominium', None)
-        apartment_number = validated_data.pop('number_apartment', None)
-        apartment_block = validated_data.pop('block_apartment', None)
+        user, condominium, apartment = get_user_condo_apartment(self.context, validated_data)
 
-        # Determina o condomínio
-        if code_condominium:
-            condominium = get_condominium_to_code(code_condominium)
-        else:
-            condominium = user.condominium
+        comm_type = validated_data.get('communication_type', Communication.CommunicationTypeChoices.MESSAGE)
 
-        # Determina os destinatários com base no tipo de usuário e nos dados fornecidos
-        if user.user_type == 'resident':
-            if apartment_number and apartment_block:
-                # Morador envia para outro apartamento
-                apartment = get_apartment_number(
-                    condominium,
-                    apartment_number,
-                    apartment_block
-                )
-                recipients_qs = apartment.main_resident.all()
-            else:
-                # Morador envia para a administração
-                admins = Person.objects.filter(
-                    user_type='admin',
-                    managed_condominiums=condominium
-                )
-                employees = Person.objects.filter(
-                    user_type='employee',
+        if comm_type == Communication.CommunicationTypeChoices.MESSAGE:
+            if user.user_type not in ['admin', 'employee']:
+                recipients_qs = Person.objects.filter(
+                    user_type__in=['admin', 'employee'],
                     condominium=condominium
                 )
-                recipients_qs = admins.union(employees)
+            else:
+                if apartment:
+                    recipients_qs = apartment.main_resident
+                else:
+                    raise serializers.ValidationError(
+                        'Número e bloco do apartamento são obrigatórios para mensagens.'
+                    )
         else:
-            # Admin/Funcionário envia para um apartamento
-            apartment = get_apartment_number(
-                condominium,
-                apartment_number,
-                apartment_block
+            if user.user_type not in ['admin', 'employee']:
+                raise serializers.ValidationError('Somente administração pode criar avisos.')
+            if apartment:
+                recipients_qs = apartment.main_resident
+            else:
+                recipients_qs = Person.objects.filter(
+                    user_type='resident',
+                    condominium=condominium
+                )
+
+
+        final_recipients = None
+
+        if not recipients_qs:
+            raise serializers.ValidationError(
+                'Nenhum destinatário encontrado para a comunicação, talvez não tenha moradores.'
             )
-            recipients_qs = apartment.main_resident.all()
+        elif isinstance(recipients_qs, Person):
+            final_recipients = [recipients_qs]
+        else:
+            final_recipients = recipients_qs
 
         communication = Communication.objects.create(
-            condominium=condominium,
             sender=user,
+            condominium=condominium,
             **validated_data
         )
-        communication.recipients.set(recipients_qs)
-
+        communication.recipients.set(final_recipients)
         return communication
 
     def update(self, instance, validated_data):
-        code_condominium = validated_data.pop('code_condominium', None)
-        apartment_number = validated_data.pop('number_apartment', None)
-        apartment_block = validated_data.pop('block_apartment', None)
+        if 'title' in validated_data:
+            title = validated_data['title'].title()
+            validated_data['title'] = title
 
-        if code_condominium:
-                condominium = get_condominium_to_code(code_condominium)
-                instance.condominium = condominium
+        if (instance.communication_type  == Communication.CommunicationTypeChoices.MESSAGE
+                and self.context['request'].user.user_type in ['admin', 'employee']):
+            if 'number_apartment' in validated_data or 'block_apartment' in validated_data:
+                user, _, apartment = get_user_condo_apartment(self.context, validated_data)
 
-        if apartment_number and apartment_block:
-            apartment = get_apartment_number(
-                instance.condominium,
-                apartment_number,
-                apartment_block
-            )
-            recipients_qs = apartment.main_resident.all()
-            instance.recipients.set(recipients_qs)
+                if apartment:
+                    if user.apartment != apartment:
+                        instance.recipients.set([apartment.main_resident])
 
-        title = validated_data.pop('title')
-        if title:
-            instance.title = title.title()
+        if instance.communication_type == Communication.CommunicationTypeChoices.NOTICE:
+            if 'number_apartment' in validated_data or 'block_apartment' in validated_data:
+                user, _, apartment = get_user_condo_apartment(self.context, validated_data)
 
-        message = validated_data.pop('message')
-        if message:
-            instance.message = message
+                if apartment:
+                    if user.apartment != apartment:
+                        instance.recipients.set([apartment.main_resident])
 
         return super().update(instance, validated_data)
+
 

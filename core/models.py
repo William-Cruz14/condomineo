@@ -134,7 +134,7 @@ class Apartment(models.Model):
         if self.exit_date and self.entry_date and self.exit_date <= self.entry_date:
             raise ValidationError('A data de saída deve ser posterior à data de entrada.')
 
-        if not self.number or not self.block or not self.condominium:
+        if not self.number and not self.block and not self.condominium:
             raise ValidationError('O número, bloco e condomínio são obrigatórios.')
 
         if Apartment.objects.filter(
@@ -505,6 +505,11 @@ class Communication(models.Model):
     title = models.CharField(max_length=255, verbose_name='Título')
     message = models.TextField(verbose_name='Mensagem')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Data de Criação')
+    all_residents = models.BooleanField(
+        default=False,
+        verbose_name='Enviar para Todos os Moradores',
+        help_text='Marque esta opção para enviar a comunicação para todos os moradores do condomínio.'
+    )
     sender = models.ForeignKey(
         'users.Person',
         on_delete=models.CASCADE,

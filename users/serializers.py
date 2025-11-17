@@ -1,6 +1,8 @@
 from rest_framework import serializers
+
+from core.filters import getuser
 from core.models import Apartment, Condominium
-from core.utils import get_user_condo_apartment
+from core.utils import get_user_condo_apartment, get_apartment_number, get_condominium_to_code
 from utils.validators import (
     validator_cpf, validator_telephone, validator_email, validator_user_type,
     validate_apartment_and_condominium_fields,
@@ -10,10 +12,10 @@ from .models import Person
 
 class PersonSerializer(serializers.ModelSerializer):
 
-    apartment_number = serializers.IntegerField(write_only=True, required=False)
-    apartment_block = serializers.CharField(write_only=True, required=False)
+    number_apartment = serializers.IntegerField(write_only=True, required=False)
+    block_apartment = serializers.CharField(write_only=True, required=False)
     apartment = serializers.SerializerMethodField(read_only=True)
-    condominium = serializers.SlugRelatedField(queryset=Condominium.objects.all(), slug_field='code_condominium')
+    code_condominium = serializers.CharField(write_only=True, required=False)
     recaptcha_token = serializers.CharField(
         write_only=True,
         required=False,
@@ -25,8 +27,8 @@ class PersonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Person
         fields = (
-            'id', 'name', 'email', 'cpf', 'password', 'telephone', 'user_type', 'apartment_number', 'is_active',
-            'apartment_block', 'apartment', 'position', 'condominium', 'managed_condominiums', 'registered_by',
+            'id', 'name', 'email', 'cpf', 'password', 'telephone', 'user_type', 'number_apartment', 'is_active',
+            'block_apartment', 'apartment', 'position', 'code_condominium', 'managed_condominiums', 'registered_by',
             'recaptcha_token',
         )
         extra_kwargs = {
@@ -59,10 +61,13 @@ class PersonSerializer(serializers.ModelSerializer):
     def validate_user_type(self, user_type):
         return validator_user_type(user_type)
 
+
     def validate(self, data):
+
         is_creating = self.instance is None
         if is_creating:
             token = data.pop('recaptcha_token')
+            
             if token:
                 from users.services import verificar_recaptcha
                 success, message = verificar_recaptcha(token)
@@ -70,6 +75,7 @@ class PersonSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError({'recaptcha_token': message})
 
         return super().validate(data)
+
 
     def create(self, validated_data):
         _, condo, apartment = get_user_condo_apartment(self.context, validated_data)

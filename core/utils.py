@@ -1,4 +1,5 @@
 from django.db import models
+from rest_framework import serializers
 
 from core.filters import getuser
 from core.models import Condominium
@@ -9,7 +10,7 @@ def get_condominium_to_code(code):
         condominium = Condominium.objects.get(code_condominium__iexact=code)
         return condominium
     except Condominium.DoesNotExist:
-        return "Condomínio não encontrado."
+        raise serializers.ValidationError("Condomínio não encontrado para o código fornecido.")
 
 
 def get_apartment_number(condominium, number, block):
@@ -18,7 +19,7 @@ def get_apartment_number(condominium, number, block):
         apartment = condominium.apartments.get(number=number, block__iexact=block)
         return apartment
     except condominium.apartments.model.DoesNotExist:
-        return "Apartamento não encontrado no condomínio especificado."
+        raise serializers.ValidationError("Apartamento não encontrado no condomínio especificado.")
 
 
 def pop_apartment_and_condominium(validated_data):
@@ -26,6 +27,10 @@ def pop_apartment_and_condominium(validated_data):
     code_condominium = validated_data.pop('code_condominium', None)
     apartment_number = validated_data.pop('number_apartment', None)
     apartment_block = validated_data.pop('block_apartment', None)
+
+    if not all([apartment_number, apartment_block]):
+        return code_condominium, None, None
+
     return code_condominium, apartment_number, apartment_block
 
 def get_user_condo_apartment(context, validated_data):
@@ -33,13 +38,15 @@ def get_user_condo_apartment(context, validated_data):
     user = getuser(context['request'])
 
     code, apt_number, apt_block = pop_apartment_and_condominium(validated_data)
-
-    if code and apt_number and apt_block:
+    if code:
         condominium = get_condominium_to_code(code)
-        apartment = get_apartment_number(condominium, apt_number, apt_block)
-    else :
-        condominium = user.condominium
+        if apt_block and apt_number:
+            apartment = get_apartment_number(condominium, apt_number, apt_block)
+        else :
+            apartment = None
+    else:
         apartment = user.apartment
+        condominium = apartment.condominium
 
     return user, condominium, apartment
 

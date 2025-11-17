@@ -14,7 +14,7 @@ def queryset_filter_condominium(query_base, user):
 
     # Se o usuário for administrador, retorna todos os registros do condomínio que ele criou
     if user.user_type == "admin":
-        return query_base.filter(created_by=user)
+        return query_base.filter(pk__in=user.managed_condominiums.all())
     elif user.user_type == "employee": # Se for funcionário, retorna todos os registros do condomínio do funcionário
         return query_base.filter(pk=user.condominium.id)
     else: # Se for residente, retorna apenas os registros do condomínio do apartamento do residente
