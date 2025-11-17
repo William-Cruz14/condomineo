@@ -1,11 +1,7 @@
 from rest_framework import serializers
-
-from core.filters import getuser
-from core.models import Apartment, Condominium
-from core.utils import get_user_condo_apartment, get_apartment_number, get_condominium_to_code
+from core.utils import get_user_condo_apartment
 from utils.validators import (
     validator_cpf, validator_telephone, validator_email, validator_user_type,
-    validate_apartment_and_condominium_fields,
 )
 from .models import Person
 
