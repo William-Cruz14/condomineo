@@ -2,7 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import AbstractUser, BaseUserManager, Group
 from django.db import models
 from rest_framework import validators
-from rest_framework.serializers import ValidationError
+from django.core.exceptions import ValidationError
 
 # CustomUserManager para gerenciar a criação de usuários e superusuários
 class CustomPersonManager(BaseUserManager):
@@ -111,15 +111,19 @@ class Person(AbstractUser):
     def clean(self):
         super().clean()
         if self.user_type == "resident" and not self.apartment:
-            return ValidationError('Moradores devem ter um apartamento associado.')
+            raise ValidationError('Moradores devem ter um apartamento associado.')
 
         if self.user_type in ["resident", "employee"] and not self.condominium:
-            return ValidationError("Usuários que não são administradores devem ter um condomínio associado.")
+            raise ValidationError("Usuários que não são administradores devem ter um condomínio associado.")
 
         if self.user_type == "employee" and not self.position:
-            return ValidationError("Funcionários devem ter um cargo definido.")
+            raise ValidationError("Funcionários devem ter um cargo definido.")
 
-        if self.user_type == "admin" and self.is_superuser == False:
+        if self.apartment:
+            if self.apartment.main_resident != self:
+                raise ValidationError("Apartamento já possui um morador principal associado.")
+
+        if self.user_type == Person.UserType.ADMIN and self.is_superuser == False:
             if self.pk and self.managed_condominiums.count() == 0:
                 raise ValidationError("Administradores devem gerenciar pelo menos um condomínio.")
 

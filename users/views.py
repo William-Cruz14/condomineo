@@ -35,8 +35,8 @@ class PersonView(ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         # Se o tipo de usuário for 'admin', retornar erro 403 (Forbidden)
-        if request.data.get('user_type') == 'admin':
-            return Response({"Aviso": "Criação de administradores não é permitida para todos.."},
+        if request.data.get('user_type') == Person.UserType.ADMIN:
+            return Response({"Aviso": "Criação de administradores não é permitida via esta API."},
                             status=status.HTTP_403_FORBIDDEN)
 
         response = super().create(request, *args, **kwargs)

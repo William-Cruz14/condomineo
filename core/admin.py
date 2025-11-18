@@ -4,8 +4,13 @@ from django.contrib.auth.models import Group
 from unfold.admin import ModelAdmin
 from unfold.forms import AdminPasswordChangeForm, UserCreationForm, UserChangeForm
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+
+from .filters import queryset_filter_reservation, queryset_filter_finance, queryset_filter_visitor, \
+    queryset_filter_apartment, queryset_filter_notice, queryset_filter_condominium, queryset_filter_vehicle, \
+    queryset_filter_order, queryset_filter_visit, queryset_filter_communication, queryset_filter_resident, \
+    queryset_filter_occurrence
 from .models import (Apartment, Visitor, Reservation, Finance, Vehicle, Order, Visit, Condominium, Notice,
-                     Communication, Address, Resident)
+                     Communication, Address, Resident, Occurrence)
 from .forms import (
     VisitorForm, ReservationForm, FinanceForm, VehicleForm, ApartmentForm,
     OrderForm, CondominiumForm, NoticeForm, CommunicationForm
@@ -21,6 +26,11 @@ class CondominiumAdmin(ModelAdmin):
     search_fields = ('name', 'cnpj')
     ordering = ('name',)
     readonly_fields = ('created_at', 'code_condominium', 'created_by')
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        user = request.user
+        return queryset_filter_condominium(qs, user)
 
     def save_model(self, request, obj, form, change):
         if not change:
@@ -45,6 +55,12 @@ class NoticeAdmin(ModelAdmin):
     ordering = ('-created_at',)
     readonly_fields = ('created_at', 'author')
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        user = request.user
+        return queryset_filter_notice(qs, user)
+
+
     def save_model(self, request, obj, form, change):
         if not change:
             obj.author = request.user
@@ -63,13 +79,8 @@ class ApartmentAdmin(ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        if request.user.is_superuser:
-            return qs
-        if request.user.user_type == 'admin':
-            return qs.filter(condominium__in=request.user.managed_condominiums.all())
-        if request.user.apartment:
-            return qs.filter(condominium=request.user.apartment.condominium)
-        return qs.none()
+        user = request.user
+        return queryset_filter_apartment(qs, user)
 
 # Cadastro do modelo 'Visitante' no site de administração, para que os moradores, síndicos e administradores possam gerenciar
 # os Visitantes.
@@ -82,13 +93,8 @@ class VisitorAdmin(ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        if request.user.is_superuser:
-            return qs
-        if request.user.user_type == 'admin':
-            return qs.filter(condominium__in=request.user.managed_condominiums.all())
-        if request.user.apartment:
-            return qs.filter(condominium=request.user.apartment.condominium)
-        return qs.none()
+        user = request.user
+        return queryset_filter_visitor(qs, user)
 
     def save_model(self, request, obj, form, change):
         if not change:
@@ -102,6 +108,11 @@ class ReservationAdmin(ModelAdmin):
     list_display = ('id', 'resident', 'space', 'start_time', 'end_time')
     search_fields = ('resident__name', 'space',)
     form = ReservationForm
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        user = request.user
+        return queryset_filter_reservation(qs, user)
 
     def save_model(self, request, obj, form, change):
         if not change:
@@ -121,13 +132,8 @@ class FinanceAdmin(ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        if request.user.is_superuser:
-            return qs
-        if request.user.user_type == 'admin':
-            return qs.filter(condominium__in=request.user.managed_condominiums.all())
-        if request.user.apartment:
-            return qs.filter(condominium=request.user.apartment.condominium)
-        return qs.none()
+        user = request.user
+        return queryset_filter_finance(qs, user)
 
     def save_model(self, request, obj, form, change):
         if not change:
@@ -143,13 +149,8 @@ class VehicleAdmin(ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        if request.user.is_superuser:
-            return qs
-        if request.user.user_type == 'admin':
-            return qs.filter(condominium__in=request.user.managed_condominiums.all())
-        if request.user.apartment:
-            return qs.filter(condominium=request.user.apartment.condominium)
-        return qs.none()
+        user = request.user
+        return queryset_filter_vehicle(qs, user)
 
     def save_model(self, request, obj, form, change):
         if not change:
@@ -168,6 +169,12 @@ class OrderAdmin(ModelAdmin):
     ordering = ('-order_date',)
     form = OrderForm
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        user = request.user
+        return queryset_filter_order(qs, user)
+
+
     def save_model(self, request, obj, form, change):
         if not change:
             obj.registered_by = request.user
@@ -179,6 +186,11 @@ class VisitAdmin(ModelAdmin):
     search_fields = ('visitor__name', 'apartment__number',)
     ordering = ('-apartment',)
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        user = request.user
+        return queryset_filter_visit(qs, user)
+
 @admin.register(Communication)
 class CommunicationAdmin(ModelAdmin):
 
@@ -188,6 +200,11 @@ class CommunicationAdmin(ModelAdmin):
     search_fields = ('title', 'condominium__name')
     ordering = ('-created_at',)
     readonly_fields = ('created_at', 'sender')
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        user = request.user
+        return queryset_filter_communication(qs, user)
 
     def save_model(self, request, obj, form, change):
         if not change:
@@ -201,8 +218,25 @@ class ResidentAdmin(ModelAdmin):
     search_fields = ('name', 'cpf', 'registered_by__name', 'apartment__number')
     list_filter = ('apartment__condominium',)
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        user = request.user
+        return queryset_filter_resident(qs, user)
+
     def save_model(self, request, obj, form, change):
         if not change:
             obj.registered_by = request.user
             obj.apartment = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(Occurrence)
+class OccurrenceAdmin(ModelAdmin):
+    list_display = ('title', 'date_reported', 'reported_by', 'status')
+    search_fields = ('title', 'reported_by__name', 'reported_by__name')
+    list_filter = ('condominium',)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        user = request.user
+        return queryset_filter_occurrence(qs, user)

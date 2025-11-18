@@ -7,7 +7,7 @@ from django.db.models import Q
 from users.models import Person
 from core.models import (
     Visitor, Visit, Reservation, Apartment, Finance, Vehicle, Order, Notice,
-    Communication, Occurrence
+    Communication, Occurrence, Resident
 )
 
 User = get_user_model()
@@ -38,6 +38,7 @@ def create_user_group_and_permissions(sender, **kwargs):
         'visitor': Visitor,
         'visit': Visit,
         'reservation': Reservation,
+        'resident': Resident,
         'apartment': Apartment,
         'finance': Finance,
         'vehicle': Vehicle,
@@ -52,6 +53,7 @@ def create_user_group_and_permissions(sender, **kwargs):
         'person': ['view', 'add', 'change'],
         'visitor': ['view', 'add', 'change', 'delete'],
         'visit': ['view', 'add', 'change', 'delete'],
+        'resident': ['view', 'add', 'change', 'delete'],
         'reservation': ['view', 'add', 'change', 'delete'],
         'apartment': ['view', 'add'],
         'finance': ['view'],
@@ -66,6 +68,7 @@ def create_user_group_and_permissions(sender, **kwargs):
         'person': ['view', 'add', 'change'],
         'visitor': ['view', 'add', 'change'],
         'visit': ['view', 'add', 'change'],
+        'resident': ['view', 'add', 'change'],
         'reservation': ['view', 'add', 'change'],
         'apartment': ['view', 'add', 'change'],
         'finance': ['view', 'add', 'change'],
@@ -78,6 +81,7 @@ def create_user_group_and_permissions(sender, **kwargs):
 
     administracao_perms = {
         'person': ['view', 'add', 'change', 'delete'],
+        'resident': ['view', 'add', 'change', 'delete'],
         'visitor': ['view', 'add', 'change', 'delete'],
         'visit': ['view', 'add', 'change', 'delete'],
         'reservation': ['view', 'add', 'change', 'delete'],

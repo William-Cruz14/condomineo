@@ -150,12 +150,13 @@ class VisitorSerializer(serializers.ModelSerializer):
         return telephone
 
     def create(self, validated_data):
+        name = validated_data.get('name')
+        validated_data['name'] = name.title()
+
         user, condo, _ = get_user_condo_apartment(self.context, validated_data)
-        # Formata o nome do visitante
-        validated_data['name'] = validated_data['name'].title()
 
         # Cria a instância de Visitor associada ao condomínio encontrado
-        visitor = Visitor.objects.get_or_create(
+        visitor, _ = Visitor.objects.get_or_create(
             condominium=condo,
             registered_by=user,
             **validated_data
@@ -311,7 +312,7 @@ class ReservationSerializer(serializers.ModelSerializer):
 
         if apartment:
             if user.apartment != apartment:
-                instance.resident = apartment.main_resident.first()
+                instance.resident = apartment.main_resident
 
 
         return super().update(instance, validated_data)
@@ -319,13 +320,14 @@ class ReservationSerializer(serializers.ModelSerializer):
 class FinanceSerializer(serializers.ModelSerializer):
     creator = PersonSerializer(read_only=True)
     condominium = CondominiumSerializer(read_only=True)
-    condominium_code = serializers.CharField(write_only=True)
+    code_condominium = serializers.CharField(write_only=True)
+    value = serializers.FloatField()
 
     class Meta:
         model = Finance
         fields = (
             'id', 'creator', 'value', 'date', 'description',
-            'document', 'condominium', 'condominium_code'
+            'document', 'condominium', 'code_condominium'
         )
         read_only_fields = (
             'id', 'creator', 'condominium'
@@ -401,6 +403,10 @@ class ResidentSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user, condo, apartment = get_user_condo_apartment(self.context, validated_data)
 
+        name = validated_data.get('name')
+        if name:
+            validated_data['name'] = name.title()
+
         # Criar residente
         resident = Resident.objects.create(
             condominium=condo,
@@ -412,26 +418,15 @@ class ResidentSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         # Atualiza os campos do residente
+
         user, _, apartment = get_user_condo_apartment(self.context, validated_data)
         if apartment:
             if user.apartment != apartment:
                 instance.apartment = apartment
 
-        cpf = validated_data.get('cpf')
-        if cpf:
-            instance.cpf = cpf
-
-        email = validated_data.get('email')
-        if email:
-            instance.email = email
-
         name = validated_data.get('name')
         if name:
-            instance.name = name.title()
-
-        phone = validated_data.get('phone')
-        if phone:
-            instance.phone = phone
+            validated_data['name'] = name.title()
 
         return super().update(instance, validated_data)
 
@@ -468,11 +463,24 @@ class VehicleSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user, condo, apartment = get_user_condo_apartment(self.context, validated_data)
 
+        plate = validated_data.get('plate')
+        color = validated_data.get('color')
+        model = validated_data.get('model')
+
+        if model:
+            validated_data['model'] = model.title()
+
+        if plate:
+            validated_data['plate'] = plate.upper()
+
+        if color:
+            validated_data['color'] = color.title()
+
         #Criar o veículo associando-o ao residente principal e ao responsável pelo registro
         vehicle = Vehicle.objects.create(
             condominium=condo,
             registered_by=user,
-            owner=apartment.main_resident.first(),
+            owner=apartment.main_resident,
             **validated_data
         )
         return vehicle
@@ -480,9 +488,22 @@ class VehicleSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         user, _, apartment = get_user_condo_apartment(self.context, validated_data)
 
+        plate = validated_data.get('plate')
+        color = validated_data.get('color')
+        model = validated_data.get('model')
+
+        if model:
+            validated_data['model'] = model.title()
+
+        if plate:
+            validated_data['plate'] = plate.upper()
+
+        if color:
+            validated_data['color'] = color.title()
+
         if apartment:
             if user.apartment != apartment:
-                instance.owner = apartment.main_resident.first()
+                instance.owner = apartment.main_resident
 
 
         return super().update(instance, validated_data)
@@ -490,9 +511,9 @@ class VehicleSerializer(serializers.ModelSerializer):
 class OccurrenceSerializer(serializers.ModelSerializer):
 
     condominium = CondominiumSerializer(read_only=True)
-    number_apartment = serializers.IntegerField(write_only=True)
-    block_apartment = serializers.CharField(write_only=True)
-    code_condominium = serializers.CharField(write_only=True)
+    number_apartment = serializers.IntegerField(write_only=True, required=False)
+    block_apartment = serializers.CharField(write_only=True, required=False)
+    code_condominium = serializers.CharField(write_only=True, required=False)
     reported_by = PersonSerializer(read_only=True)
 
     class Meta:
@@ -521,7 +542,7 @@ class OccurrenceSerializer(serializers.ModelSerializer):
 
         occurrence = Occurrence.objects.create(
             condominium=condo,
-            reported_by=apartment.main_resident.first(),
+            reported_by=apartment.main_resident,
             title=title.title(),
             status=status.lower(),
             **validated_data
@@ -531,10 +552,20 @@ class OccurrenceSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
 
+        title = validated_data.pop('title', None)
+        status = validated_data.pop('status', None)
+
         user, _, apartment = get_user_condo_apartment(self.context, validated_data)
+
         if apartment:
             if user.apartment != apartment:
-                instance.reported_by = apartment.main_resident.first()
+                instance.reported_by = apartment.main_resident
+
+        if title:
+            validated_data['title'] = title.title()
+
+        if status:
+            validated_data['status'] = status.lower()
 
         return super().update(instance, validated_data)
 
@@ -566,11 +597,14 @@ class OrderSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Pega o usuário autenticado
         user, condo, apartment = get_user_condo_apartment(self.context, validated_data)
+        code = validated_data.get('order_code')
+        if code:
+            validated_data['order_code'] = code.upper()
 
         # Criar o pedido associando-o ao residente principal
         order = Order.objects.create(
             condominium=condo,
-            owner=apartment.main_resident.first(),
+            owner=apartment.main_resident,
             registered_by=user,
             **validated_data
         )
@@ -581,14 +615,18 @@ class OrderSerializer(serializers.ModelSerializer):
 
         if apartment:
             if user.apartment != apartment:
-                instance.owner = apartment.main_resident.first()
+                instance.owner = apartment.main_resident
+
+        code = validated_data.get('order_code')
+        if code:
+            validated_data['order_code'] = code.upper()
 
         return super().update(instance, validated_data)
 
 class NoticeSerializer(serializers.ModelSerializer):
     author = PersonSerializer(read_only=True)
     condominium = CondominiumSerializer(read_only=True)
-    code_condominium = serializers.CharField(write_only=True)
+    code_condominium = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = Notice

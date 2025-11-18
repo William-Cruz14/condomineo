@@ -2,7 +2,7 @@ import uuid
 
 from django.db import models
 from django.contrib.auth.models import AbstractUser, Group
-from rest_framework.serializers import ValidationError
+from django.core.exceptions import ValidationError
 from users.models import Person
 
 class Condominium(models.Model):

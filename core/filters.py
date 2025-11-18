@@ -5,6 +5,9 @@ from core.models import (
 )
 from django.db.models import Q
 
+from users.models import Person
+
+
 def getuser(request):
     return request.user
 
@@ -13,9 +16,9 @@ def queryset_filter_condominium(query_base, user):
     """Filtra o queryset conforme o tipo de usuário."""
 
     # Se o usuário for administrador, retorna todos os registros do condomínio que ele criou
-    if user.user_type == "admin":
+    if user.user_type == Person.UserType.ADMIN:
         return query_base.filter(pk__in=user.managed_condominiums.all())
-    elif user.user_type == "employee": # Se for funcionário, retorna todos os registros do condomínio do funcionário
+    elif user.user_type == Person.UserType.EMPLOYEE: # Se for funcionário, retorna todos os registros do condomínio do funcionário
         return query_base.filter(pk=user.condominium.id)
     else: # Se for residente, retorna apenas os registros do condomínio do apartamento do residente
         return query_base.filter(pk=user.condominium.id)
@@ -25,9 +28,9 @@ def queryset_filter_apartment(query_base, user):
     """Filtra o queryset conforme o tipo de usuário."""
 
     # Se o usuário for administrador, retorna todos os registros do apartamento que ele criou
-    if user.user_type == "admin":
+    if user.user_type == Person.UserType.ADMIN:
         return query_base.filter(condominium__in=user.managed_condominiums.all())
-    elif user.user_type == "employee":# Se for funcionário, retorna todos os registros do apartamento do condomínio do funcionário
+    elif user.user_type == Person.UserType.EMPLOYEE:# Se for funcionário, retorna todos os registros do apartamento do condomínio do funcionário
         return query_base.filter(condominium=user.condominium)
     else: # Se for residente, retorna apenas os registros do apartamento do residente
         return query_base.filter(pk=user.apartment.id)
@@ -74,10 +77,12 @@ def queryset_filter_reservation(query_base, user):
     """Filtra o queryset para reservas conforme o tipo de usuário."""
 
     # Se o usuário for administrador, retorna todos os registros da reserva que esteja no condomínio que ele gerencia
-    if user.user_type == "admin":
+    if user.is_superuser:
+        return query_base.all()
+    elif user.user_type == Person.UserType.ADMIN:
         return query_base.filter(condominium__in=user.managed_condominiums.all())
     # Se for funcionário, retorna todos os registros da reserva do condomínio do funcionário
-    elif user.user_type == "employee":
+    elif user.user_type == Person.UserType.EMPLOYEE:
         return query_base.filter(condominium=user.condominium)
     # Se for residente, retorna apenas os registros da reserva do residente
     else:

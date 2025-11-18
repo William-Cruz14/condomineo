@@ -45,7 +45,6 @@ class VehicleForm(forms.ModelForm):
         fields = ['condominium', 'plate', 'model', 'color', 'owner']
 
 
-
 class OrderForm(forms.ModelForm):
     class Meta:
         model = Order
