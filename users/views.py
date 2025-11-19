@@ -1,3 +1,4 @@
+from decouple import config
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -119,4 +120,4 @@ class PersonView(ModelViewSet):
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class = OAuth2Client
-    callback_url = "http://localhost:5500/index.html"
+    callback_url = config('CALLBACK_URL')
