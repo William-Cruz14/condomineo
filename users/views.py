@@ -119,5 +119,5 @@ class PersonView(ModelViewSet):
 
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
-    client_class = OAuth2Client
+    client_class = CustomOAuth2Client
     callback_url = config('CALLBACK_URL')
