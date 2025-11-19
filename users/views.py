@@ -119,4 +119,4 @@ class PersonView(ModelViewSet):
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class = OAuth2Client
-    callback_url = "localhost:3000"
+    callback_url = "http://localhost:5500/index.html"
