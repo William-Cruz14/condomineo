@@ -1,13 +1,17 @@
 from decouple import config
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny, DjangoModelPermissions
 from rest_framework.viewsets import ModelViewSet
+from rest_framework_simplejwt.tokens import RefreshToken
+
 from core.models import Apartment, Condominium
 from utils.utils import send_custom_email
 from .filters import queryset_filter_person, PersonFilterSet
 from .models import Person
+from .permissions import IsOnboardingUser
 from .serializers import PersonSerializer
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from dj_rest_auth.registration.views import SocialLoginView
@@ -121,3 +125,23 @@ class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class = CustomOAuth2Client
     callback_url = config('CALLBACK_URL')
+    permission_classes = [IsOnboardingUser]
+
+    def get_object(self):
+        return self.request.user
+
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if not self.user.is_active:
+            refresh = RefreshToken.for_user(self.user)
+            refresh['restricted_signup'] = True
+
+            return Response({
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'is_new_user': True,
+                'detail': "Cadastro incompleto. Por favor, complete seu perfil."
+            }, status=status.HTTP_200_OK)
+
+        return response

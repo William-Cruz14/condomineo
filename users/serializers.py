@@ -62,17 +62,16 @@ class PersonSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
 
-        is_creating = self.instance is None
-        if is_creating:
+        if not self.instance:
+
             token = data.pop('recaptcha_token')
-            
+
             if token:
                 from users.services import verificar_recaptcha
                 success, message = verificar_recaptcha(token)
                 if not success:
                     raise ValidationError({'recaptcha_token': message})
 
-        if self.context['request'].method == 'POST':
             # Verifica se o código do condomínio foi fornecido para moradores e funcionários
             if not data.get('code_condominium'):
                 raise ValidationError("code_condominium: Código do condomínio é obrigatório para moradores e funcionários.")
@@ -102,6 +101,54 @@ class PersonSerializer(serializers.ModelSerializer):
                         raise ValidationError(
                             "position: Cargo são obrigatórios para funcionários."
                         )
+        else:
+
+            cpf = data.get('cpf')
+            if not cpf:
+                raise ValidationError({'cpf': 'O CPF é obrigatório para completar o cadastro.'})
+
+            if Person.objects.exclude(id=self.instance.id).filter(cpf=cpf).exists():
+                raise ValidationError({'cpf': 'Este CPF já está em uso.'})
+
+            user_type = data.get('user_type')
+            if not user_type:
+                raise ValidationError({'user_type': 'O tipo de usuário é obrigatório para completar o cadastro.'})
+
+            if user_type not in [Person.UserType.RESIDENT, Person.UserType.EMPLOYEE]:
+                raise ValidationError({'user_type': 'Tipo de usuário inválido. Deve ser "resident" ou "employee".'})
+
+            if user_type == Person.UserType.RESIDENT:
+                number_apartment = data.get('number_apartment')
+                block_apartment = data.get('block_apartment')
+                code_condominium = data.get('code_condominium')
+
+                if not number_apartment or not block_apartment or not code_condominium:
+                    raise ValidationError({
+                        'number_apartment / block_apartment / code_condominium':
+                            'Número do apartamento, bloco e código do condomínio são obrigatórios para moradores.'
+                    })
+
+                if code_condominium and number_apartment and block_apartment:
+                    apartment = get_apartment_number(
+                        get_condominium_to_code(code_condominium),
+                        number_apartment,
+                        block_apartment
+                    )
+                    if apartment:
+                        if hasattr(apartment, 'main_resident') and apartment.main_resident != self.instance:
+                            raise ValidationError("Apartamento já possui um morador principal associado.")
+                    else:
+                        raise ValidationError("Apartamento não encontrado para os dados fornecidos.")
+
+            if user_type == Person.UserType.EMPLOYEE:
+                position = data.get('position')
+                code_condominium = data.get('code_condominium')
+
+                if not position or not code_condominium:
+                    raise ValidationError({
+                        'position / code_condominium':
+                            'Cargo e código do condomínio são obrigatórios para funcionários.'
+                    })
 
         return super().validate(data)
 
