@@ -125,7 +125,7 @@ class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class = CustomOAuth2Client
     callback_url = config('CALLBACK_URL')
-    permission_classes = [IsOnboardingUser]
+    permission_classes = [IsOnboardingUser, AllowAny]
 
     def get_object(self):
         return self.request.user
