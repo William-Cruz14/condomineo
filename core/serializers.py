@@ -1,4 +1,3 @@
-from django.db.models import QuerySet
 from rest_framework import serializers
 from users.serializers import PersonSerializer
 from .filters import getuser
@@ -8,7 +7,7 @@ from core.models import (
     Notice, Communication, Occurrence
 )
 from users.models import Person
-from .utils import get_condominium_to_code, get_apartment_number, get_user_condo_apartment
+from .utils import get_condominium_to_code, get_user_condo_apartment
 from utils.validators import validator_cpf, validator_telephone, validator_email, \
     validate_apartment_and_condominium_fields, validator_value_finance
 
@@ -292,6 +291,17 @@ class ReservationSerializer(serializers.ModelSerializer):
         user = getuser(self.context['request'])
         if not self.instance:
             validate_apartment_and_condominium_fields(user, data)
+
+            if data['start_time'] >= data['end_time']:
+                raise serializers.ValidationError('A hora de início deve ser anterior à hora de término.')
+
+            if Reservation.objects.filter(
+                condominium__code_condominium=data['code_condominium'],
+                space=data['space'],
+                start_time__lt=data['end_time'],
+                end_time__gt=data['start_time']
+            ).exists():
+                raise serializers.ValidationError('Já existe uma reserva para este espaço no período selecionado.')
 
         return data
 
