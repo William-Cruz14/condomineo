@@ -67,8 +67,6 @@ INSTALLED_APPS = [
 
 SITE_ID = 1
 
-
-
 UNFOLD = {
     "SITE_LOGO": {
             "light": lambda request: "/static/logo.png",  # light mode

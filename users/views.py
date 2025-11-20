@@ -36,6 +36,9 @@ class PersonView(ModelViewSet):
         if self.action == 'create':
             return [AllowAny()]
 
+        if self.action in ['update', 'partial_update']:
+            return [IsAuthenticated() , DjangoModelPermissions() , IsOnboardingUser()]
+
         return [IsAuthenticated(), DjangoModelPermissions()]
 
     def create(self, request, *args, **kwargs):
@@ -125,7 +128,6 @@ class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class = CustomOAuth2Client
     callback_url = config('CALLBACK_URL')
-    permission_classes = [IsOnboardingUser, AllowAny]
 
     def get_object(self):
         return self.request.user

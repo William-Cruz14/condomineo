@@ -9,3 +9,7 @@ class IsOnboardingUser(BasePermission):
         if request.auth and request.auth.get('restricted_signup'):
             return True
         return False
+
+    def has_object_permission(self, request, view, obj):
+        # Permitir acesso ao objeto se a permissão geral for concedida
+        return obj == request.user
