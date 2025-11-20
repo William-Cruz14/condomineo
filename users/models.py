@@ -47,7 +47,7 @@ class Person(AbstractUser):
     email = models.EmailField(verbose_name='E-mail', max_length=255, unique=True)
     cpf = models.CharField(
         max_length=11, unique=True,
-        null=False, verbose_name='Cadastro de Pessoa Física (CPF)'
+        null=True, blank=True, verbose_name='Cadastro de Pessoa Física (CPF)'
     )
 
     telephone = models.CharField(max_length=11, blank=True, null=True, verbose_name='Telefone')

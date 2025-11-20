@@ -24,6 +24,8 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         """
         user = sociallogin.user
         user.set_unusable_password()
+        if not user.cpf:
+            user.cpf = None
 
         # 1. Salva o Usuário (Person) PRIMEIRO.
         #    Isso garante que ele tenha um 'pk' (ID).
