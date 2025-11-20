@@ -6,6 +6,6 @@ class IsOnboardingUser(BasePermission):
     """
     def has_permission(self, request, view):
         # A nossa lógica de validação vai aqui
-        if request.auth.get('restrito_ao_cadastro'):
+        if request.auth and request.auth.get('restricted_signup'):
             return True
         return False

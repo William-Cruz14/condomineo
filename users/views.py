@@ -133,7 +133,7 @@ class GoogleLogin(SocialLoginView):
 
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
-        if not self.user.is_active:
+        if self.user and not self.user.is_active:
             refresh = RefreshToken.for_user(self.user)
             refresh['restricted_signup'] = True
 
