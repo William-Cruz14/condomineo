@@ -1,7 +1,7 @@
 from decouple import config
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from .serializers import CustomUserDetailsSerializer
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny, DjangoModelPermissions
 from rest_framework.viewsets import ModelViewSet
@@ -139,11 +139,13 @@ class GoogleLogin(SocialLoginView):
             refresh = RefreshToken.for_user(self.user)
             refresh['restricted_signup'] = True
 
+            user_serializer = CustomUserDetailsSerializer(self.user, context={'request': request})
+
             return Response({
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
-                'is_new_user': True,
-                'detail': "Cadastro incompleto. Por favor, complete seu perfil."
+                'detail': "Cadastro incompleto. Por favor, complete seu perfil.",
+                'user': user_serializer.data,
             }, status=status.HTTP_200_OK)
 
         return response
