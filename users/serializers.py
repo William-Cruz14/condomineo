@@ -51,7 +51,14 @@ class PersonSerializer(serializers.ModelSerializer):
         return validator_telephone(telephone)
 
     def validate_email(self, email):
-        return validator_email(email)
+        user = self.context['request'].user
+        if user.is_authenticated and user.email == email:
+            return email
+
+        if Person.objects.exclude(id=self.instance.id).filter(email=email).exists():
+            raise ValidationError('Este e-mail já está em uso.')
+
+        return email
 
     def validate_cpf(self, cpf):
         return validator_cpf(cpf)
