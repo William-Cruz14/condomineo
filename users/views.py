@@ -1,3 +1,4 @@
+from allauth.core.internal.httpkit import redirect
 from decouple import config
 from rest_framework import status
 from rest_framework.decorators import action
@@ -131,6 +132,15 @@ class GoogleLogin(SocialLoginView):
     def get_object(self):
         return self.request.user
 
+    def get_client(self, request):
+        client = super().get_client(request)
+
+        redirect_uri = request.data.get('redirect_uri')
+
+        if redirect_uri:
+            client.redirect_uri = redirect_uri
+
+        return client
 
     def post(self, request, *args, **kwargs):
         try:
