@@ -127,24 +127,28 @@ class PersonView(ModelViewSet):
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class = CustomOAuth2Client
+    callback_url = config('CALLBACK_URL')
 
     def get_object(self):
         return self.request.user
 
 
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        if self.user and not self.user.is_active:
-            refresh = RefreshToken.for_user(self.user)
-            refresh['restricted_signup'] = True
+        try:
+            response = super().post(request, *args, **kwargs)
+            if self.user and not self.user.is_active:
+                refresh = RefreshToken.for_user(self.user)
+                refresh['restricted_signup'] = True
 
-            user_serializer = CustomUserDetailsSerializer(self.user, context={'request': request})
+                user_serializer = CustomUserDetailsSerializer(self.user, context={'request': request})
 
-            return Response({
-                'access': str(refresh.access_token),
-                'refresh': str(refresh),
-                'detail': "Cadastro incompleto. Por favor, complete seu perfil.",
-                'user': user_serializer.data,
-            }, status=status.HTTP_200_OK)
+                return Response({
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh),
+                    'detail': "Cadastro incompleto. Por favor, complete seu perfil.",
+                    'user': user_serializer.data,
+                }, status=status.HTTP_200_OK)
 
-        return response
+            return response
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
