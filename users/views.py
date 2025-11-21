@@ -132,15 +132,14 @@ class GoogleLogin(SocialLoginView):
     def get_object(self):
         return self.request.user
 
-    def get_client(self, request):
-        client = super().get_client(request)
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs['context'] = self.get_serializer_context()
 
-        redirect_uri = request.data.get('redirect_uri')
-
-        if redirect_uri:
-            client.redirect_uri = redirect_uri
-
-        return client
+        request_data = kwargs.get('data', {})
+        dynamic_callback_url = request_data.get('redirect_uri') or request_data.get('callback_url')
+        if dynamic_callback_url:
+            self.callback_url = dynamic_callback_url
 
     def post(self, request, *args, **kwargs):
         try:
