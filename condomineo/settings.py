@@ -170,7 +170,7 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'PorttuSmart API',
     'DESCRIPTION': 'API para gestão de condomínios - schema gerado pelo drf-spectacular',
     'VERSION': '1.0.0',
-    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.IsAuthenticated'],
 }
 
 MIDDLEWARE = [

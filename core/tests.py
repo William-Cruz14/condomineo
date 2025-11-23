@@ -282,7 +282,7 @@ class VisitorModelTests(TestCase):
         Visitor.objects.create(
             condominium=self.condominium,
             name='Pedro',
-            cpf='11111111111',
+            cpf='11111111112',
             registered_by=self.creator
         )
 
@@ -290,7 +290,7 @@ class VisitorModelTests(TestCase):
             Visitor.objects.create(
                 condominium=self.condominium,
                 name='Paulo',
-                cpf='11111111111',
+                cpf='11111111112',
                 registered_by=self.creator
             )
 
