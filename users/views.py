@@ -25,7 +25,6 @@ class CustomOAuth2Client(OAuth2Client):
         kwargs.pop("scope_delimiter", None)
         super().__init__(*args, **kwargs)
 
-
 class PersonView(ModelViewSet):
     serializer_class = PersonSerializer
     filterset_class = PersonFilterSet
@@ -52,25 +51,24 @@ class PersonView(ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # --- LÓGICA DE UPSERT (ATUALIZAR OU CRIAR) ---
         user = request.user
         instance = None
 
-        # 1. Tenta encontrar o usuário logado
+        # Tenta encontrar o usuário logado
         if user and user.is_authenticated:
             instance = Person.objects.filter(pk=user.pk).first()
 
-        # 2. Se não achou pelo login (raro), tenta pelo email enviado
+        # Se não achou pelo login (raro), tenta pelo email enviado
         if not instance and request.data.get('email'):
             instance = Person.objects.filter(email=request.data['email']).first()
 
-        # 3. Decide se é Update ou Create
+        # Decide se é Update ou Create
         if instance:
-            print(f"🔄 Completando cadastro do usuário: {instance.email}")
+            print(f"Completando cadastro do usuário: {instance.email}")
             # Passamos 'instance', o que faz o serializer entrar no modo UPDATE
             serializer = self.get_serializer(instance, data=request.data, partial=True)
         else:
-            print("✨ Criando novo usuário")
+            print("Criando novo usuário")
             # Sem 'instance', o serializer entra no modo CREATE
             serializer = self.get_serializer(data=request.data)
 
@@ -80,7 +78,6 @@ class PersonView(ModelViewSet):
         self.perform_create(serializer)
 
         # Notificação apenas se for cadastro novo ou completando agora
-        # (Pode ajustar essa lógica se quiser)
         if not instance or (instance and not instance.is_active):
             self.send_new_user_notification(serializer.data)
 
@@ -98,7 +95,7 @@ class PersonView(ModelViewSet):
         else:
             serializer.save()
 
-    # ... Mantenha seus métodos send_new_user_notification, _get_condominium_id_from_user_data e me idênticos ...
+
     def send_new_user_notification(self, user_data):
         condominium_id = self._get_condominium_id_from_user_data(user_data)
         if not condominium_id: return

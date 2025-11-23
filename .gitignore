@@ -1,76 +1,49 @@
-# Django
-cloud.json
-*.log
-*.pot
-*.pyc
+# Ignorar ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Ambientes virtuais
+.venv/
+venv/
+
+# Bytecode Python
 __pycache__/
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-media
+*.py[cod]
+
+# Logs
+auth.log
+*.log
+
+# Arquivos temporários / dumps
+*.sqlite3
+*.tmp
+*.swp
+
+# Builds / Distribuição
+build/
+dist/
+
+# Arquivos estáticos coletados
 staticfiles/
 
-# Ambiente virtual
-venv/
-env/
-ENV/
-
-# PyCharm
-.idea/
-*.iml
-*.iws
-*.ipr
-*.iws
-.idea_modules/
-out/
-atlassian-ide-plugin.xml
-
-# Python
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Arquivos de ambiente e segredos
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Arquivos de cache
-.pytest_cache/
+# Cache / Coverage
 .coverage
 htmlcov/
-.tox/
-.nox/
-.hypothesis/
-.coverage.*
-nosetests.xml
-coverage.xml
-*.cover
+.pytest_cache/
+.mypy_cache/
 
-# Arquivos temporários
-*.swp
-*~
-.DS_Store
-Thumbs.db
+# IDE / Editor
+.vscode/
+.idea/
+*.iml
 
-# Arquivos específicos do seu projeto
-condomineo/settings/local.py
-media/
+# Docker artefacts
+*.pid
+
+# Arquivos de schema gerados
+openapi.yaml
+
+# Node (se futuro front estiver junto)
+node_modules/
+
