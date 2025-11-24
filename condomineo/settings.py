@@ -131,13 +131,8 @@ SOCIALACCOUNT_ADAPTER = 'users.adapters.SocialAccountAdapter'
 # Configurações do provedor Google para django-allauth
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
-        'SCOPE': [
-            'profile',
-            'email',
-        ],
-        'AUTH_PARAMS': {
-            'access_type': 'offline',
-        },
+        'SCOPE': ['profile', 'email',],
+        'AUTH_PARAMS': {'access_type': 'offline',},
     }
 }
 

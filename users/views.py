@@ -22,7 +22,10 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 
 class CustomOAuth2Client(OAuth2Client):
     def __init__(self, *args, **kwargs):
+
         kwargs.pop("scope_delimiter", None)
+        kwargs.pop("headers", None)
+
         super().__init__(*args, **kwargs)
 
 class PersonView(ModelViewSet):
@@ -151,7 +154,7 @@ class PersonView(ModelViewSet):
 
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
-    client_class = OAuth2Client
+    client_class = CustomOAuth2Client
     callback_url = config('CALLBACK_URL')
 
 
