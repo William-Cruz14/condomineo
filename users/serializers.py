@@ -192,3 +192,15 @@ class CustomUserDetailsSerializer(serializers.ModelSerializer):
         if not obj.cpf:
             return True
         return False
+
+
+class CustomSocialLoginSerializer(serializers.Serializer):
+    callback_url = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        # Garante que o callback_url passe para o validated_data
+        request = self.context.get('request')
+        if request and 'callback_url' in request.data:
+            attrs['callback_url'] = request.data['callback_url']
+
+        return super().validate(attrs)

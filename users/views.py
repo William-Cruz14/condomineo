@@ -14,7 +14,7 @@ from .authentication import JWTAuthenticationAllowInactive
 from .filters import queryset_filter_person, PersonFilterSet
 from .models import Person
 from .permissions import IsOnboardingUser
-from .serializers import PersonSerializer, CustomUserDetailsSerializer
+from .serializers import PersonSerializer, CustomUserDetailsSerializer, CustomSocialLoginSerializer
 
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from dj_rest_auth.registration.views import SocialLoginView
@@ -153,6 +153,7 @@ class PersonView(ModelViewSet):
 class GoogleLogin(SocialLoginView):
     adapter_class = CustomGoogleOAuth2Adapter
     client_class = CustomOAuth2Client
+    serializer_class = CustomSocialLoginSerializer
 
     def get_object(self):
         return self.request.user

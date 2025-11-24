@@ -46,7 +46,10 @@ class CustomGoogleOAuth2Adapter(GoogleOAuth2Adapter):
         # Retorna a URL de callback personalizada para Google OAuth2
         callback_url = request.data.get('callback_url')
 
+        print(f"Custom callback URL: {callback_url}")
+
         if callback_url:
             return callback_url
 
-        return super().get_callback_url(request, app)
+        default_url = super().get_callback_url(request, app)
+        return default_url
