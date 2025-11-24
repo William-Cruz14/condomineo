@@ -193,3 +193,4 @@ class CustomUserDetailsSerializer(serializers.ModelSerializer):
         if not obj.cpf:
             return True
         return False
+""
