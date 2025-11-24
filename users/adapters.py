@@ -1,4 +1,6 @@
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+
 
 class SocialAccountAdapter(DefaultSocialAccountAdapter):
     def populate_user(self, request, sociallogin, data):
@@ -37,3 +39,14 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         sociallogin.save(request)
 
         return user
+
+
+class CustomGoogleOAuth2Adapter(GoogleOAuth2Adapter):
+    def get_callback_url(self, request, app):
+        # Retorna a URL de callback personalizada para Google OAuth2
+        callback_url = request.data.get('callback_url')
+
+        if callback_url:
+            return callback_url
+
+        return super().get_callback_url(request, app)

@@ -9,6 +9,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.models import Apartment, Condominium
 from utils.utils import send_custom_email
+from .adapters import CustomGoogleOAuth2Adapter
 from .authentication import JWTAuthenticationAllowInactive
 from .filters import queryset_filter_person, PersonFilterSet
 from .models import Person
@@ -150,7 +151,7 @@ class PersonView(ModelViewSet):
 
 
 class GoogleLogin(SocialLoginView):
-    adapter_class = GoogleOAuth2Adapter
+    adapter_class = CustomGoogleOAuth2Adapter
     client_class = CustomOAuth2Client
     callback_url = config('CALLBACK_URL')
 

@@ -75,3 +75,4 @@ Thumbs.db
 condomineo/settings/local.py
 media/
 /media/
+database_schema.dbml

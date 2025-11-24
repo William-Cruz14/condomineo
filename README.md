@@ -318,16 +318,6 @@ Este projeto está sob licença proprietária. Todos os direitos reservados.
 
 Para dúvidas ou suporte, entre em contato através do e-mail: [seu-email@example.com]
 
-## 🗺️ Roadmap
-
-- [ ] Implementação de notificações push
-- [ ] App mobile (React Native)
-- [ ] Dashboard com gráficos e estatísticas
-- [ ] Integração com sistemas de pagamento
-- [ ] Chat em tempo real
-- [ ] Sistema de votação para assembleias
-- [ ] Integração com câmeras de segurança
-- [ ] Relatórios em PDF
 
 ## 📸 Screenshots
 
