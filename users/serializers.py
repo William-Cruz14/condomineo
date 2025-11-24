@@ -1,7 +1,5 @@
-from dj_rest_auth.registration.serializers import SocialLoginSerializer
 from rest_framework import serializers
-from core.utils import get_user_condo_apartment, get_apartment_number, get_condominium_to_code, \
-    pop_apartment_and_condominium
+from core.utils import get_user_condo_apartment, get_apartment_number, get_condominium_to_code
 from rest_framework.exceptions import ValidationError
 from utils.validators import (
     validator_cpf, validator_telephone, validator_user_type,
@@ -193,4 +191,3 @@ class CustomUserDetailsSerializer(serializers.ModelSerializer):
         if not obj.cpf:
             return True
         return False
-""

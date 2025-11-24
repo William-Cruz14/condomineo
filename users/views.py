@@ -18,6 +18,9 @@ from .serializers import PersonSerializer, CustomUserDetailsSerializer
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from dj_rest_auth.registration.views import SocialLoginView
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class CustomOAuth2Client(OAuth2Client):
@@ -67,11 +70,11 @@ class PersonView(ModelViewSet):
 
         # Decide se é Update ou Create
         if instance:
-            print(f"Completando cadastro do usuário: {instance.email}")
+            logger.info(f"Completando cadastro do usuário: {instance.email}")
             # Passamos 'instance', o que faz o serializer entrar no modo UPDATE
             serializer = self.get_serializer(instance, data=request.data, partial=True)
         else:
-            print("Criando novo usuário")
+            logger.info("Criando novo usuário")
             # Sem 'instance', o serializer entra no modo CREATE
             serializer = self.get_serializer(data=request.data)
 
@@ -152,19 +155,36 @@ class PersonView(ModelViewSet):
         return Response(serializer.data)
 
 
+
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class = CustomOAuth2Client
-    callback_url = config('CALLBACK_URL')
 
+    @property
+    def callback_url(self):
+        # Tenta query string primeiro, depois body, depois padrão
+        callback = self.request.GET.get('callback_url') or \
+                   self.request.data.get('callback_url') or \
+                   config('CALLBACK_URL', default='http://127.0.0.1:5500/pages/callback.html')
+
+        logger.info(f"[GoogleLogin] callback_url requisitado: {callback}")
+        logger.info(f"[GoogleLogin] Query params: {dict(self.request.GET)}")
+        logger.info(f"[GoogleLogin] Request data: {self.request.data}")
+        return callback
 
     def get_object(self):
         return self.request.user
 
     def post(self, request, *args, **kwargs):
+        logger.info(f"[GoogleLogin] Iniciando POST")
+        logger.info(f"[GoogleLogin] callback_url property: {self.callback_url}")
+
         try:
             response = super().post(request, *args, **kwargs)
+            logger.info(f"[GoogleLogin] Super().post() executado com sucesso")
+
             if self.user and not self.user.is_active:
+                logger.info(f"[GoogleLogin] Usuário inativo detectado: {self.user.email}")
                 refresh = RefreshToken.for_user(self.user)
                 refresh['restricted_signup'] = True
                 user_serializer = CustomUserDetailsSerializer(self.user, context={'request': request})
@@ -177,4 +197,5 @@ class GoogleLogin(SocialLoginView):
                 }, status=status.HTTP_200_OK)
             return response
         except Exception as e:
+            logger.error(f"[GoogleLogin] Erro: {str(e)}", exc_info=True)
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
