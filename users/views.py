@@ -160,16 +160,29 @@ class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class = CustomOAuth2Client
 
+    # Lista de URLs permitidos
+    ALLOWED_CALLBACK_URLS = [
+        'http://127.0.0.1:5500/pages/callback.html',
+        'https://www.porttusmart.tech/pages/callback.html',
+        'https://d128i9hqy82wx1.cloudfront.net/pages/callback.html',
+        'https://site-condomino-piv.vercel.app/pages/callback.html',
+    ]
+
     @property
     def callback_url(self):
-        # Tenta query string primeiro, depois body, depois padrão
+        # Tentar a query string primeiro, depois body, depois padrão
         callback = self.request.GET.get('callback_url') or \
                    self.request.data.get('callback_url') or \
                    config('CALLBACK_URL', default='http://127.0.0.1:5500/pages/callback.html')
 
         logger.info(f"[GoogleLogin] callback_url requisitado: {callback}")
-        logger.info(f"[GoogleLogin] Query params: {dict(self.request.GET)}")
-        logger.info(f"[GoogleLogin] Request data: {self.request.data}")
+
+        # Validação de segurança
+        if callback not in self.ALLOWED_CALLBACK_URLS:
+            logger.warning(f"[GoogleLogin] callback_url não autorizado: {callback}")
+            raise ValueError(f"URL de callback não autorizado: {callback}")
+
+        logger.info(f"[GoogleLogin] callback_url validado com sucesso: {callback}")
         return callback
 
     def get_object(self):
