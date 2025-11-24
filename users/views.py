@@ -152,20 +152,7 @@ class PersonView(ModelViewSet):
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class = CustomOAuth2Client
-
-    def get_client(self, request, app):
-        callback = request.data.get('redirect_uri')
-
-        if not callback:
-            raise Exception("O parâmetro 'redirect_uri' não foi passado pelo frontend.")
-
-        return self.client_class(
-            request=request,
-            consumer_key=app.client_id,
-            consumer_secret=app.secret,
-            adapter=self.adapter_class,
-            callback_url=callback
-        )
+    callback_url = config('CALLBACK_URL')
 
 
     def get_object(self):
