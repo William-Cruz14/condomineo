@@ -39,20 +39,3 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         sociallogin.save(request)
 
         return user
-
-
-class CustomGoogleOAuth2Adapter(GoogleOAuth2Adapter):
-    def get_callback_url(self, request, app):
-        # VAMOS IMPRIMIR TUDO QUE ESTÁ CHEGANDO
-        print("\n" + "=" * 30)
-        print("🔍 DEBUG ADAPTER GOOGLE")
-        print(f"1. Request Data (Bruto): {request.data}")
-
-        callback_url = request.data.get('callback_url')
-        print(f"2. URL encontrada: {callback_url}")
-        print("=" * 30 + "\n")
-
-        if callback_url:
-            return callback_url
-
-        return super().get_callback_url(request, app)

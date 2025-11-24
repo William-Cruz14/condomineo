@@ -193,20 +193,3 @@ class CustomUserDetailsSerializer(serializers.ModelSerializer):
         if not obj.cpf:
             return True
         return False
-
-
-class CustomSocialLoginSerializer(SocialLoginSerializer):
-    # Definimos explicitamente que este campo é permitido e opcional
-    callback_url = serializers.CharField(required=False, allow_blank=True)
-
-    def validate(self, attrs):
-        # Executa a validação padrão (que verifica code/access_token)
-        attrs = super().validate(attrs)
-
-        # Garante que o callback_url esteja disponível no validated_data
-        # Pegando diretamente do request original se o serializer não pegar automático
-        request = self.context.get('request')
-        if request and 'callback_url' in request.data:
-            attrs['callback_url'] = request.data['callback_url']
-
-        return attrs
