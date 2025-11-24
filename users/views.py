@@ -155,14 +155,18 @@ class GoogleLogin(SocialLoginView):
 
     def get_client(self, request, app):
         callback = request.data.get('redirect_uri')
-        client = self.client_class(
+
+        if not callback:
+            raise Exception("O parâmetro 'redirect_uri' não foi passado pelo frontend.")
+
+        return self.client_class(
             request=request,
             consumer_key=app.client_id,
             consumer_secret=app.secret,
             adapter=self.adapter_class,
             callback_url=callback
         )
-        return client
+
 
     def get_object(self):
         return self.request.user
