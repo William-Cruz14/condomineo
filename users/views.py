@@ -9,7 +9,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.models import Apartment, Condominium
 from utils.utils import send_custom_email
-from .adapters import CustomGoogleOAuth2Adapter
 from .authentication import JWTAuthenticationAllowInactive
 from .filters import queryset_filter_person, PersonFilterSet
 from .models import Person
@@ -22,13 +21,9 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 
 
 class CustomOAuth2Client(OAuth2Client):
-    def __init__(self, request, consumer_key, consumer_secret, adapter, callback_url):
-        super().__init__(
-            request=request,
-            consumer_key=consumer_key,
-            consumer_secret=consumer_secret,
-            callback_url=callback_url
-        )
+    def __init__(self, *args, **kwargs):
+        kwargs.pop("scope_delimiter", None)
+        super().__init__(*args, **kwargs)
 
 class PersonView(ModelViewSet):
     serializer_class = PersonSerializer
@@ -155,7 +150,7 @@ class PersonView(ModelViewSet):
 
 
 class GoogleLogin(SocialLoginView):
-    adapter_class = CustomGoogleOAuth2Adapter
+    adapter_class = GoogleOAuth2Adapter
     client_class = CustomOAuth2Client
 
     def get_client(self, request, app):

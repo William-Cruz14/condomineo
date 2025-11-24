@@ -39,15 +39,3 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         sociallogin.save(request)
 
         return user
-
-
-class CustomGoogleOAuth2Adapter(GoogleOAuth2Adapter):
-    def get_callback_url(self, request, app):
-        # Lê o redirect_uri enviado pelo frontend
-        redirect_uri = request.data.get("redirect_uri")
-
-        if redirect_uri:
-            return redirect_uri
-
-        # fallback (evita erro)
-        return super().get_callback_url(request, app)
