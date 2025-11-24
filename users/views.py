@@ -154,7 +154,7 @@ class GoogleLogin(SocialLoginView):
     client_class = CustomOAuth2Client
 
     def get_client(self, request, app):
-        callback = request.data.get('callback_url')
+        callback = request.data.get('redirect_uri')
         client = self.client_class(
             request,
             app.client_id,
