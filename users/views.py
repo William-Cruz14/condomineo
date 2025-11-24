@@ -153,7 +153,6 @@ class PersonView(ModelViewSet):
 class GoogleLogin(SocialLoginView):
     adapter_class = CustomGoogleOAuth2Adapter
     client_class = CustomOAuth2Client
-    callback_url = config('CALLBACK_URL')
 
     def get_object(self):
         return self.request.user
