@@ -1,3 +1,4 @@
+from dj_rest_auth.registration.serializers import SocialLoginSerializer
 from rest_framework import serializers
 from core.utils import get_user_condo_apartment, get_apartment_number, get_condominium_to_code, \
     pop_apartment_and_condominium
@@ -194,7 +195,7 @@ class CustomUserDetailsSerializer(serializers.ModelSerializer):
         return False
 
 
-class CustomSocialLoginSerializer(serializers.Serializer):
+class CustomSocialLoginSerializer(SocialLoginSerializer):
     callback_url = serializers.CharField(required=False, allow_blank=True)
 
     def validate(self, attrs):
